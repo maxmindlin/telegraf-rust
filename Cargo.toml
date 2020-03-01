@@ -1,12 +1,14 @@
 [package]
 name = "telegraf"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Max Mindlin <maxmindlin@gmail.com>"]
 edition = "2018"
 repository = "https://github.com/maxmindlin/telegraf-rust"
 description = "Minimal rust wrapper for the telegraf/influxdb protocol"
 license = "MIT"
 readme = "README.md"
+keywords = ["telegraf", "influxdb", "influx", "metrics"]
+categories = ["database"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
