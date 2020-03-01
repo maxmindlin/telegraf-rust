@@ -1,6 +1,15 @@
 Minimal wrapper library for general metrics writing using telegraf. Telegraf is a micro service provided
 by InfluxData for making metrics reporting easy for multiple services - see their [docs](https://docs.influxdata.com/telegraf/v1.13/introduction/installation/) for more information.
 
+# Install
+
+Add it to your Cargo.toml:
+
+```
+[dependencies]
+telegraf = "0.1.1"
+```
+
 # Usage
 
 Using this library assumes you have a socket listener input setup in your telegraf config, like so (currently only tcp is supported, but udp and unix are planned):
