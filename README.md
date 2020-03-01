@@ -30,4 +30,4 @@ let p = Point::new(
 c.write_point(p)
 ```
 
-The second value in the field tuples can be any type that implements the `IntoFieldData` trait provided by this lib. Out of the box support is provided for `String`, `&str`, `f32`, and `i32`.
+The second value in the field tuples can be any type that implements the `protocol::IntoFieldData` trait provided by this lib. Out of the box support is provided for `String`, `&str`, `f32`, and `i32`.
