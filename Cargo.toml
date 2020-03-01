@@ -6,6 +6,7 @@ edition = "2018"
 repository = "https://github.com/maxmindlin/telegraf-rust"
 description = "Minimal rust wrapper for the telegraf/influxdb protocol"
 license = "MIT"
+readme = "README.md"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
