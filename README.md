@@ -13,6 +13,8 @@ Using this library assumes you have a socket listener input setup in your telegr
 Example usage:
 
 ```rust
+use telegraf::{Client, Point};
+
 let c = Client::new("tcp://localhost:8094").unwrap();
 
 let p = Point::new(
