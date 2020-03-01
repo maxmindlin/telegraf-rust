@@ -7,7 +7,7 @@ Add it to your Cargo.toml:
 
 ```
 [dependencies]
-telegraf = "0.1.1"
+telegraf = "0.1.2"
 ```
 
 # Usage
