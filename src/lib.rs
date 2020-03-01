@@ -1,10 +1,27 @@
 pub mod protocol;
 
-use std::io::Write;
+use std::fmt;
+use std::io::{Write, Error};
 use url::Url;
 use std::net::TcpStream;
 
 use protocol::*;
+
+pub enum TelegrafError {
+    IoError(Error),
+    ConnectionError(String),
+    BadProtocol(String)
+}
+
+impl fmt::Display for TelegrafError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            TelegrafError::IoError(ref e) => write!(f, "{}", e),
+            TelegrafError::ConnectionError(ref e) => write!(f, "{}", e),
+            TelegrafError::BadProtocol(ref e) => write!(f, "{}", e),
+        }
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct Point {
@@ -52,17 +69,17 @@ pub struct Client {
 }
 
 impl Client {
-    pub fn new(conn_url: String) -> Result<Self, String> {
+    pub fn new(conn_url: String) -> Result<Self, TelegrafError> {
         let conn = create_connection(&conn_url);
         match conn {
             Ok(c) => Ok(Self { conn: c }),
-            Err(e) => Err(format!("error creating connection {}", e))
+            Err(e) => Err(e)
         }
     }
 
     // Writes the protocol representation of a point
     // to the established connection. 
-    pub fn write_point(&self, point: Point) -> Result<(), String> {
+    pub fn write_point(&self, point: Point) -> Result<(), TelegrafError> {
         let lp = point.clone().to_lp();
         let bytes = lp.to_str().as_bytes();
         match &self.conn {
@@ -72,14 +89,14 @@ impl Client {
                 let r = tc.write(bytes);
                 match r {
                     Ok(_) => Ok(()),
-                    Err(e) => Err(format!("failed to write to tcp socket {}", e))
+                    Err(e) => Err(TelegrafError::IoError(e))
                 }
             }
         }
     }
 }
 
-fn create_connection(conn_url: &str) -> Result<Connector, String> {
+fn create_connection(conn_url: &str) -> Result<Connector, TelegrafError> {
     let url = Url::parse(&conn_url);
         match url {
             Ok(u) => {
@@ -91,15 +108,15 @@ fn create_connection(conn_url: &str) -> Result<Connector, String> {
                         let conn = TcpStream::connect(format!("{}:{}", host, port));
                         match conn {
                             Ok(c) => Ok(Connector::TCP(TcPConnection { conn: c })),
-                            Err(_) => Err("error connecting to tcp socket".to_owned())
+                            Err(e) => Err(TelegrafError::IoError(e))
                         }
                     },
-                    "udp" => Err("udp not supported yet".to_owned()),
-                    "unix" => Err("unix not supported yet".to_owned()),
-                    _ => Err(format!("unknown connection protocol {}", scheme))
+                    "udp" => Err(TelegrafError::BadProtocol("udp not supported yet".to_owned())),
+                    "unix" => Err(TelegrafError::BadProtocol("unix not supported yet".to_owned())),
+                    _ => Err(TelegrafError::BadProtocol(format!("unknown connection protocol {}", scheme)))
                 }
             },
-            Err(_) => Err(format!("invalid connection URL {}", conn_url))
+            Err(_) => Err(TelegrafError::BadProtocol(format!("invalid connection URL {}", conn_url)))
         }
 }
 
