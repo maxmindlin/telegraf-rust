@@ -7,6 +7,7 @@ use std::net::TcpStream;
 
 use protocol::*;
 
+#[derive(Debug)]
 pub enum TelegrafError {
     IoError(Error),
     ConnectionError(String),
@@ -43,7 +44,7 @@ impl Point {
             .map(|(n,v)| Field { name: n, value: v.into_field_data() })
             .collect();
         Point {
-            measurement: measurement,
+            measurement,
             tags: t,
             fields: f,
         }
