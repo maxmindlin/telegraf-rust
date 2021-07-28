@@ -7,7 +7,7 @@ Add it to your Cargo.toml:
 
 ```
 [dependencies]
-telegraf = "0.1.2"
+telegraf = "0.2.0"
 ```
 
 # Usage
@@ -20,6 +20,19 @@ Using this library assumes you have a socket listener input setup in your telegr
 ```
 
 Example usage:
+
+```rust
+use telegraf::{Client, point};
+
+let c = Client::new("tcp://localhost:8094").unwrap();
+
+let p = point!("measurement", ("tag1", "tag1value"), ("field1", 10) ("field2", 20.5));
+
+c.write_point(p)
+```
+
+Or directly from the `Point::new` method:
+
 
 ```rust
 use telegraf::{Client, Point};
@@ -41,7 +54,7 @@ let p = Point::new(
 c.write_point(p)
 ```
 
-The second value in the field tuples can be any type that implements the `protocol::IntoFieldData` trait provided by this lib. Out of the box support is provided for `String`, `&str`, `f32`, and `i32`. You can always implement this trait on your own custom types or types I forgot!
+The second value in the field tuples can be any type that implements the `IntoFieldData` trait provided by this lib. Out of the box support is provided for common types. You can always implement this trait on your own custom types or types I forgot!
 
 ```rust
 pub trait IntoFieldData {
