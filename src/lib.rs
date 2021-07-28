@@ -1,3 +1,4 @@
+pub mod macros;
 pub mod protocol;
 
 use std::fmt;
@@ -6,6 +7,7 @@ use url::Url;
 use std::net::TcpStream;
 
 use protocol::*;
+pub use protocol::{IntoFieldData, FieldData};
 
 #[derive(Debug)]
 pub enum TelegrafError {
@@ -24,7 +26,9 @@ impl fmt::Display for TelegrafError {
     }
 }
 
-#[derive(Debug, Clone)]
+/// A single influx metric. Handles conversion from Rust types
+/// to influx lineprotocol syntax.
+#[derive(Debug, Clone, PartialEq)]
 pub struct Point {
     pub measurement: String,
     pub tags: Vec<Tag>,
@@ -32,6 +36,7 @@ pub struct Point {
 }
 
 impl Point {
+    /// Creates a new Point that can be written using a [Client].
     pub fn new(
         measurement: String,
         tags: Vec<(String, String)>,
@@ -50,7 +55,7 @@ impl Point {
         }
     }
 
-    pub fn to_lp(&self) -> LineProtocol {
+    fn to_lp(&self) -> LineProtocol {
         let tag_attrs: Vec<Attr> = self.tags.clone()
             .into_iter()
             .map(|t| Attr::Tag(t))
@@ -65,11 +70,15 @@ impl Point {
     }
 }
 
+/// Connection client used to handle socket connection management
+/// and writing.
 pub struct Client {
     conn: Connector
 }
 
 impl Client {
+    /// Creates a new Client. Determines socket protocol from
+    /// provided URL.
     pub fn new(conn_url: String) -> Result<Self, TelegrafError> {
         let conn = create_connection(&conn_url);
         match conn {
@@ -78,16 +87,32 @@ impl Client {
         }
     }
 
-    // Writes the protocol representation of a point
-    // to the established connection. 
-    pub fn write_point(&self, point: Point) -> Result<(), TelegrafError> {
-        let lp = point.clone().to_lp();
+    /// Writes the protocol representation of a point
+    /// to the established connection.
+    pub fn write_point(&self, pt: &Point) -> Result<(), TelegrafError> {
+        let lp = pt.to_lp();
         let bytes = lp.to_str().as_bytes();
+        self.write_to_conn(bytes)
+    }
+
+    /// Joins multiple points together and writes them in a batch. Useful
+    /// if you want to write lots of points but not overwhelm local service or
+    /// you want to ensure all points have the exact same timestamp.
+    pub fn write_points(&self, pts: &[Point]) -> Result<(), TelegrafError> {
+        let lp = pts.iter()
+            .map(|p| p.to_lp().to_str().to_owned())
+            .collect::<Vec<String>>()
+            .join("");
+        self.write_to_conn(lp.as_bytes())
+    }
+
+    /// Writes byte array to internal outgoing socket.
+    fn write_to_conn(&self, data: &[u8]) -> Result<(), TelegrafError> {
         match &self.conn {
             Connector::TCP(c) => {
                 let mut tc = &c.conn;
 
-                let r = tc.write(bytes);
+                let r = tc.write(data);
                 match r {
                     Ok(_) => Ok(()),
                     Err(e) => Err(TelegrafError::IoError(e))
@@ -153,6 +178,6 @@ mod tests {
         );
 
         let lp = p.to_lp();
-        assert_eq!(lp.to_str(), "Foo,t1=v f1=10i,f2=10.3,f3=\"b\"");
+        assert_eq!(lp.to_str(), "Foo,t1=v f1=10i,f2=10.3,f3=\"b\"\n");
     }
 }

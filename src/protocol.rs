@@ -7,7 +7,7 @@ impl LineProtocol {
         tags: String,
         fields: String,
     ) -> Self {
-        Self(format!("{},{} {}", measurement, tags, fields))
+        Self(format!("{},{} {}\n", measurement, tags, fields))
     }
 
     pub fn to_str(&self) -> &str {
@@ -15,17 +15,31 @@ impl LineProtocol {
     }
 }
 
+/// Used to convert Rust types to influx types. Must be
+/// implemented by any type that will be used as a Field in a [Point].
 pub trait IntoFieldData {
     fn into_field_data(&self) -> FieldData;
 }
 
 impl IntoFieldData for i32 {
     fn into_field_data(&self) -> FieldData {
+        FieldData::Number(*self as i64)
+    }
+}
+
+impl IntoFieldData for i64 {
+    fn into_field_data(&self) -> FieldData {
         FieldData::Number(*self)
     }
 }
 
 impl IntoFieldData for f32 {
+    fn into_field_data(&self) -> FieldData {
+        FieldData::Float(*self as f64)
+    }
+}
+
+impl IntoFieldData for f64 {
     fn into_field_data(&self) -> FieldData {
         FieldData::Float(*self)
     }
@@ -43,10 +57,12 @@ impl IntoFieldData for String {
     }
 }
 
-#[derive(Debug, Clone)]
+
+/// Influx types that can be used in a field.
+#[derive(Debug, Clone, PartialEq)]
 pub enum FieldData {
-    Number(i32),
-    Float(f32),
+    Number(i64),
+    Float(f64),
     Str(String),
 }
 
@@ -58,13 +74,13 @@ pub fn get_field_string(value: &FieldData) -> String {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Tag {
     pub name:  String,
     pub value: String,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Field {
     pub name:  String,
     pub value: FieldData,
