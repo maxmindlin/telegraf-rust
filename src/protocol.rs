@@ -1,5 +1,42 @@
+/// Container struct for telegraf line protocol.
 #[derive(Debug)]
 pub struct LineProtocol(String);
+
+/// Used to convert Rust types to influx types. Must be
+/// implemented by any type that will be used as a Field in a [Point].
+pub trait IntoFieldData {
+    fn into_field_data(&self) -> FieldData;
+}
+
+/// Influx types that can be used in a field.
+#[derive(Debug, Clone, PartialEq)]
+pub enum FieldData {
+    Number(i64),
+    Float(f64),
+    Str(String),
+}
+
+/// Different types of data collections that can
+/// be in Influx.
+#[derive(Debug)]
+pub enum Attr {
+    Tag(Tag),
+    Field(Field)
+}
+
+/// Container struct for tag attributes.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Tag {
+    pub name:  String,
+    pub value: String,
+}
+
+/// Container struct for field attributes
+#[derive(Debug, Clone, PartialEq)]
+pub struct Field {
+    pub name:  String,
+    pub value: FieldData,
+}
 
 impl LineProtocol {
     pub fn new(
@@ -13,12 +50,6 @@ impl LineProtocol {
     pub fn to_str(&self) -> &str {
         &self.0
     }
-}
-
-/// Used to convert Rust types to influx types. Must be
-/// implemented by any type that will be used as a Field in a [Point].
-pub trait IntoFieldData {
-    fn into_field_data(&self) -> FieldData;
 }
 
 impl IntoFieldData for i32 {
@@ -57,39 +88,12 @@ impl IntoFieldData for String {
     }
 }
 
-
-/// Influx types that can be used in a field.
-#[derive(Debug, Clone, PartialEq)]
-pub enum FieldData {
-    Number(i64),
-    Float(f64),
-    Str(String),
-}
-
 pub fn get_field_string(value: &FieldData) -> String {
     match value {
         FieldData::Number(n) => format!("{}i", n),
         FieldData::Float(f)  => format!("{}", f),
         FieldData::Str(s)    => format!(r#""{}""#, s)
     }
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct Tag {
-    pub name:  String,
-    pub value: String,
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct Field {
-    pub name:  String,
-    pub value: FieldData,
-}
-
-#[derive(Debug)]
-pub enum Attr {
-    Tag(Tag),
-    Field(Field)
 }
 
 pub fn format_attr(attrs: Vec<Attr>) -> String {

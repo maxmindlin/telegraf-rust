@@ -2,28 +2,23 @@ pub mod macros;
 pub mod protocol;
 
 use std::fmt;
+use std::io;
 use std::io::{Write, Error};
 use url::Url;
-use std::net::TcpStream;
+use std::net::{Shutdown, TcpStream};
 
 use protocol::*;
 pub use protocol::{IntoFieldData, FieldData};
 
+/// Error enum for library failures.
 #[derive(Debug)]
 pub enum TelegrafError {
+    /// Error reading or writing I/O.
     IoError(Error),
+    /// Error with internal socket connection.
     ConnectionError(String),
+    /// Error when a bad protocol is created.
     BadProtocol(String)
-}
-
-impl fmt::Display for TelegrafError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            TelegrafError::IoError(ref e) => write!(f, "{}", e),
-            TelegrafError::ConnectionError(ref e) => write!(f, "{}", e),
-            TelegrafError::BadProtocol(ref e) => write!(f, "{}", e),
-        }
-    }
 }
 
 /// A single influx metric. Handles conversion from Rust types
@@ -33,6 +28,22 @@ pub struct Point {
     pub measurement: String,
     pub tags: Vec<Tag>,
     pub fields: Vec<Field>
+}
+
+/// Connection client used to handle socket connection management
+/// and writing.
+pub struct Client {
+    conn: Connector
+}
+
+/// Different types of connections that the library supports.
+enum Connector {
+    TCP(TcPConnection),
+}
+
+/// TCP socket connection container.
+struct TcPConnection {
+    conn: TcpStream
 }
 
 impl Point {
@@ -56,13 +67,15 @@ impl Point {
     }
 
     fn to_lp(&self) -> LineProtocol {
-        let tag_attrs: Vec<Attr> = self.tags.clone()
+        let tag_attrs: Vec<Attr> = self.tags
+            .to_owned()
             .into_iter()
-            .map(|t| Attr::Tag(t))
+            .map(Attr::Tag)
             .collect();
-        let field_attrs: Vec<Attr> = self.fields.clone()
+        let field_attrs: Vec<Attr> = self.fields
+            .to_owned()
             .into_iter()
-            .map(|f| Attr::Field(f))
+            .map(Attr::Field)
             .collect();
         let tag_str = format_attr(tag_attrs);
         let field_str = format_attr(field_attrs);
@@ -70,11 +83,6 @@ impl Point {
     }
 }
 
-/// Connection client used to handle socket connection management
-/// and writing.
-pub struct Client {
-    conn: Connector
-}
 
 impl Client {
     /// Creates a new Client. Determines socket protocol from
@@ -106,6 +114,11 @@ impl Client {
         self.write_to_conn(lp.as_bytes())
     }
 
+    /// Closes and cleans up socket connection.
+    pub fn close(&self) -> io::Result<()> {
+        self.conn.close()
+    }
+
     /// Writes byte array to internal outgoing socket.
     fn write_to_conn(&self, data: &[u8]) -> Result<(), TelegrafError> {
         match &self.conn {
@@ -118,6 +131,30 @@ impl Client {
                     Err(e) => Err(TelegrafError::IoError(e))
                 }
             }
+        }
+    }
+}
+
+impl Connector {
+    pub fn close(&self) -> io::Result<()> {
+        match self {
+            Self::TCP(c) => c.close(),
+        }
+    }
+}
+
+impl TcPConnection {
+    pub fn close(&self) -> io::Result<()> {
+        self.conn.shutdown(Shutdown::Both)
+    }
+}
+
+impl fmt::Display for TelegrafError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            TelegrafError::IoError(ref e) => write!(f, "{}", e),
+            TelegrafError::ConnectionError(ref e) => write!(f, "{}", e),
+            TelegrafError::BadProtocol(ref e) => write!(f, "{}", e),
         }
     }
 }
@@ -145,19 +182,6 @@ fn create_connection(conn_url: &str) -> Result<Connector, TelegrafError> {
             Err(_) => Err(TelegrafError::BadProtocol(format!("invalid connection URL {}", conn_url)))
         }
 }
-
-enum Connector {
-    TCP(TcPConnection),
-    // UDP(UdPConnection),
-}
-
-struct TcPConnection {
-    conn: TcpStream
-}
-
-// struct UdPConnection {
-//     conn: String
-// }
 
 #[cfg(test)]
 mod tests {
