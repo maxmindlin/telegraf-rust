@@ -7,12 +7,12 @@ Add it to your Cargo.toml:
 
 ```
 [dependencies]
-telegraf = "0.2.1"
+telegraf = "*"
 ```
 
 # Usage
 
-Using this library assumes you have a socket listener input setup in your telegraf config, like so (currently only tcp is supported, but udp and unix are planned):
+Using this library assumes you have a socket listener input setup in your telegraf config, like so (accepts TCP and UDP):
 
 ```
 [[inputs.socket_listener]]
@@ -26,7 +26,20 @@ use telegraf::{Client, point};
 
 let c = Client::new("tcp://localhost:8094").unwrap();
 
+// `point` syntax: (<measurement>, [(<tagName>, <tagValue>)], [(<fieldName>, <fieldValue>)])
 let p = point!("measurement", ("tag1", "tag1value"), ("field1", 10) ("field2", 20.5));
+
+c.write_point(p)
+```
+
+Without tags:
+
+```rust
+use telegraf::{Client, point};
+
+let c = Client::new("tcp://localhost:8094").unwrap();
+
+let p = point!("measurement", ("field1", 10) ("field2", 20.5));
 
 c.write_point(p)
 ```

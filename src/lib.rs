@@ -4,6 +4,8 @@ pub mod protocol;
 use std::fmt;
 use std::io;
 use std::io::{Write, Error};
+use std::net::SocketAddr;
+use std::net::UdpSocket;
 use url::Url;
 use std::net::{Shutdown, TcpStream};
 
@@ -23,6 +25,8 @@ pub enum TelegrafError {
 
 /// A single influx metric. Handles conversion from Rust types
 /// to influx lineprotocol syntax.
+///
+/// Creation of points is made easier via the [crate::point] macro.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Point {
     pub measurement: String,
@@ -39,11 +43,16 @@ pub struct Client {
 /// Different types of connections that the library supports.
 enum Connector {
     TCP(TcPConnection),
+    UDP(UdPConnection),
 }
 
 /// TCP socket connection container.
 struct TcPConnection {
     conn: TcpStream
+}
+
+struct UdPConnection {
+    conn: UdpSocket
 }
 
 impl Point {
@@ -59,7 +68,7 @@ impl Point {
         let f = fields.into_iter()
             .map(|(n,v)| Field { name: n, value: v.into_field_data() })
             .collect();
-        Point {
+        Self {
             measurement,
             tags: t,
             fields: f,
@@ -88,16 +97,13 @@ impl Client {
     /// Creates a new Client. Determines socket protocol from
     /// provided URL.
     pub fn new(conn_url: String) -> Result<Self, TelegrafError> {
-        let conn = create_connection(&conn_url);
-        match conn {
-            Ok(c) => Ok(Self { conn: c }),
-            Err(e) => Err(e)
-        }
+        let conn = create_connection(&conn_url)?;
+        Ok(Self { conn })
     }
 
     /// Writes the protocol representation of a point
     /// to the established connection.
-    pub fn write_point(&self, pt: &Point) -> Result<(), TelegrafError> {
+    pub fn write_point(&mut self, pt: &Point) -> Result<(), TelegrafError> {
         let lp = pt.to_lp();
         let bytes = lp.to_str().as_bytes();
         self.write_to_conn(bytes)
@@ -106,7 +112,7 @@ impl Client {
     /// Joins multiple points together and writes them in a batch. Useful
     /// if you want to write lots of points but not overwhelm local service or
     /// you want to ensure all points have the exact same timestamp.
-    pub fn write_points(&self, pts: &[Point]) -> Result<(), TelegrafError> {
+    pub fn write_points(&mut self, pts: &[Point]) -> Result<(), TelegrafError> {
         let lp = pts.iter()
             .map(|p| p.to_lp().to_str().to_owned())
             .collect::<Vec<String>>()
@@ -120,18 +126,8 @@ impl Client {
     }
 
     /// Writes byte array to internal outgoing socket.
-    fn write_to_conn(&self, data: &[u8]) -> Result<(), TelegrafError> {
-        match &self.conn {
-            Connector::TCP(c) => {
-                let mut tc = &c.conn;
-
-                let r = tc.write(data);
-                match r {
-                    Ok(_) => Ok(()),
-                    Err(e) => Err(TelegrafError::IoError(e))
-                }
-            }
-        }
+    fn write_to_conn(&mut self, data: &[u8]) -> Result<(), TelegrafError> {
+        self.conn.write(data).map(|_| Ok(()))?
     }
 }
 
@@ -139,7 +135,21 @@ impl Connector {
     pub fn close(&self) -> io::Result<()> {
         match self {
             Self::TCP(c) => c.close(),
+            // UdP socket doesnt have a graceful close.
+            Self::UDP(_) => Ok(()),
         }
+    }
+
+    fn write(&mut self, buf: &[u8]) -> io::Result<()> {
+        let r = match self {
+            Self::TCP(ref mut c) => {
+                c.conn.write(buf)
+            }
+            Self::UDP(c) => {
+                c.conn.send(buf)
+            }
+        };
+        r.map(|_| Ok(()))?
     }
 }
 
@@ -168,19 +178,28 @@ fn create_connection(conn_url: &str) -> Result<Connector, TelegrafError> {
                 let scheme = u.scheme();
                 match scheme {
                     "tcp" => {
-                        let conn = TcpStream::connect(format!("{}:{}", host, port));
-                        match conn {
-                            Ok(c) => Ok(Connector::TCP(TcPConnection { conn: c })),
-                            Err(e) => Err(TelegrafError::IoError(e))
-                        }
+                        let conn = TcpStream::connect(format!("{}:{}", host, port))?;
+                        Ok(Connector::TCP(TcPConnection { conn }))
                     },
-                    "udp" => Err(TelegrafError::BadProtocol("udp not supported yet".to_owned())),
+                    "udp" => {
+                        let socket = UdpSocket::bind(&[SocketAddr::from(([0, 0, 0, 0,],  0))][..])?;
+                        let addr = u.socket_addrs(|| None)?;
+                        socket.connect(&*addr)?;
+                        socket.set_nonblocking(true)?;
+                        Ok(Connector::UDP(UdPConnection { conn: socket }))
+                    },
                     "unix" => Err(TelegrafError::BadProtocol("unix not supported yet".to_owned())),
                     _ => Err(TelegrafError::BadProtocol(format!("unknown connection protocol {}", scheme)))
                 }
             },
             Err(_) => Err(TelegrafError::BadProtocol(format!("invalid connection URL {}", conn_url)))
         }
+}
+
+impl From<Error> for TelegrafError {
+    fn from(e: Error) -> Self {
+        Self::IoError(e)
+    }
 }
 
 #[cfg(test)]

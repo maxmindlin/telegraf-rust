@@ -3,7 +3,7 @@
 pub struct LineProtocol(String);
 
 /// Used to convert Rust types to influx types. Must be
-/// implemented by any type that will be used as a Field in a [Point].
+/// implemented by any type that will be used as a Field in a [crate::Point].
 pub trait IntoFieldData {
     fn into_field_data(&self) -> FieldData;
 }
@@ -99,12 +99,16 @@ pub fn get_field_string(value: &FieldData) -> String {
 pub fn format_attr(attrs: Vec<Attr>) -> String {
     let mut out: Vec<String> = attrs.into_iter()
         .map(|a| match a {
-            Attr::Tag(t) => format!("{}={}", t.name, t.value),
-            Attr::Field(f) => format!("{}={}", f.name, get_field_string(&f.value)),
+            Attr::Tag(t) => format!("{}={}", escape_spaces(&t.name), escape_spaces(&t.value)),
+            Attr::Field(f) => format!("{}={}", escape_spaces(&f.name), get_field_string(&f.value)),
         })
         .collect();
     out.sort();
     out.join(",")
+}
+
+fn escape_spaces(s: &str) -> String {
+    s.replace(" ", r#"\ "#)
 }
 
 #[cfg(test)]

@@ -1,5 +1,33 @@
 /// Shorthand macro for generating
-/// [Point] structs.
+/// [crate::Point] structs.
+///
+/// Syntax is a measurement, followed by
+/// (optional) space-delineated tag tuples, followed by
+/// space-delineated field tuples.
+///
+/// Every tuple member except field values must be &str. Field values
+/// must implement [crate::IntoFieldData].
+///
+/// ```
+/// (<measurement>, [(<tagName>, <tagVal>)], [(<fieldName>, <fieldVal>)])
+/// ```
+///
+/// Influx protocol requires every point to have at
+/// least one field, but tags are optional.
+///
+/// # Examples
+///
+/// Creates a point with one tag and two fields:
+///
+/// ```
+/// let p = point!("measure", ("t1", "t1v"), ("f1", "f1v") ("f2", "f2v"))
+/// ```
+///
+/// Creates a point with no tags and one field:
+///
+/// ```
+/// let p = point!("measure", ("f1", "f1v"))
+/// ```
 #[macro_export]
 macro_rules! point {
     ($measure:expr, $(($fname:expr, $fval:expr)) +) => {
