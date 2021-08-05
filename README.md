@@ -57,7 +57,7 @@ use telegraf::*;
 
 let mut client = Client::new("tcp://localhost:8094".to_owned()).unwrap();
 
-let p = point!("measurement", ("tag1", "tag1Val"), ("field1", "val") ("field2", 10);
+let p = point!("measurement", ("tag1", "tag1Val"), ("field1", "val") ("field2", 10));
 client.write_point(&p);
 ```
 
