@@ -3,6 +3,8 @@ name = "telegraf_derive"
 version = "0.1.0"
 authors = ["Max Mindlin <maxmindlin@gmail.com>"]
 edition = "2018"
+license = "MIT"
+repository = "https://github.com/maxmindlin/telegraf-rust"
 
 [lib]
 proc-macro = true
