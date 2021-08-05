@@ -1,3 +1,4 @@
+use telegraf_derive::*;
 use telegraf::*;
 
 #[derive(Metric)]

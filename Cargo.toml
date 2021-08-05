@@ -11,11 +11,9 @@ keywords = ["telegraf", "influxdb", "influx", "metrics"]
 categories = ["database"]
 
 [workspace]
-members = ["derive", "tests"]
+members = ["telegraf_derive"]
+exclude = ["tests"]
 
 [dependencies]
 url = "2.1.1"
-derive = { path = "derive" }
-
-# [features]
-# derive = ["telegraf_derive"]
+telegraf_derive = { path = "telegraf_derive", version = "0.1.0" }

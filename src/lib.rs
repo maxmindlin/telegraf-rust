@@ -100,7 +100,7 @@ use std::net::{Shutdown, TcpStream};
 
 use protocol::*;
 pub use protocol::{IntoFieldData, FieldData};
-pub use derive::*;
+pub use telegraf_derive::*;
 
 /// Common result type. Only meaningful response is
 /// an error.
@@ -148,6 +148,10 @@ pub enum TelegrafError {
 
 /// A single influx metric. Handles conversion from Rust types
 /// to influx lineprotocol syntax.
+///
+/// Telegraf protocol requires at least one field, whereas
+/// tags are completely optional. Attempting to write a point
+/// without any fields will return a [crate::TelegrafError].
 ///
 /// Creation of points is made easier via the [crate::point] macro.
 #[derive(Debug, Clone, PartialEq)]
