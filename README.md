@@ -1,4 +1,9 @@
-Lightweight wrapper library for general metrics writing using Telegraf. Telegraf is a micro-service provided
+# Telegraf-rust
+
+[![Telegraf crate](https://img.shields.io/crates/v/telegraf.svg)](https://crates.io/crates/telegraf)
+[![Telegraf documentation](https://docs.rs/telegraf/badge.svg)](https://docs.rs/telegraf)
+
+Telegraf-rust is a lightweight wrapper library for general metrics writing using Telegraf. Telegraf is a micro-service provided
 by InfluxData for making metrics reporting easy for distributed services - see their [docs](https://docs.influxdata.com/telegraf/v1.13/introduction/installation/) for more information.
 
 This library does not provide querying or other InfluxDB client-library features. This is meant to be lightweight and simple for services to report metrics.
