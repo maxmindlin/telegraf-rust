@@ -10,6 +10,7 @@ struct Tags {
     i: i32,
     #[telegraf(tag)]
     t: String,
+    f: f32,
 }
 
 #[derive(Metric)]
@@ -25,11 +26,6 @@ struct CustomMeasurementName {
     i: i32,
 }
 
-// #[derive(Metric)]
-// struct FieldWithLifetime<'a> {
-//     f: &'a str,
-// }
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -43,8 +39,8 @@ mod tests {
 
     #[test]
     fn can_derive_with_tags() {
-        let s = Tags { i: 1, t: "t".to_string() };
-        let exp = point!("Tags", ("t", "t"), ("i", 1));
+        let s = Tags { i: 1, t: "t".to_string(), f: 2. };
+        let exp = point!("Tags", ("t", "t"), ("i", 1) ("f", 2.));
         assert_eq!(s.to_point(), exp);
     }
 

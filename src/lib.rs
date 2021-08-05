@@ -1,3 +1,70 @@
+//! Telegraf provides a lightweight client library for writing metrics
+//! to a InfluxDB Telegraf service.
+//!
+//! This library does not provide querying or other InfluxDB client-library
+//! features. This is meant to be lightweight and simple for services
+//! to report metrics.
+//!
+//! # How to use
+//!
+//! All usage will start by creating a socket connection via a [crate::Client]. This
+//! supports multiple connection protocols - which one you use will be determined
+//! by how your Telegraf `input.socket_listener` configuration is setup.
+//!
+//! Once a client is setup there are multiple different ways to write points.
+//!
+//! 1. Define structs that represent metrics using the derive macro.
+//!
+//! ```no_run
+//! use telegraf::*;
+//!
+//! let mut client = Client::new("tcp://localhost:8094".to_owned()).unwrap();
+//!
+//! #[derive(Metric)]
+//! struct MyMetric {
+//!     field1: i32,
+//!     #[telegraf(tag)]
+//!     tag1: String,
+//! }
+//!
+//! let point = MyMetric { field1: 1, tag1: "tag".to_owned() };
+//! client.write(&point);
+//! ```
+//!
+//! By default the measurement name will be the same as the struct. You can
+//! override this via derive attributes:
+//!
+//! ```
+//! use telegraf::*;
+//!
+//! #[derive(Metric)]
+//! #[measurement = "custom_name"]
+//! struct MyMetric {
+//!     field1: i32,
+//! }
+//! ```
+//!
+//! As with any Telegraf point, tags are optional but at least one field
+//! is required.
+//!
+//! 2. Use the [crate::point] macro to do ad-hoc metrics.
+//!
+//! ```no_run
+//! use telegraf::*;
+//!
+//! let mut client = Client::new("tcp://localhost:8094".to_owned()).unwrap();
+//!
+//! let p = point!("measurement", ("tag1", "tag1Val"), ("field1", "field1Val"));
+//! client.write_point(&p);
+//! ```
+//!
+//! The macro syntax is the following format:
+//!
+//! `(<measurement>, [(<tagName>, <tagVal>)], [(<fieldName>, <fieldVal>)])`
+//!
+//! Measurement name, tag set, and field set are space separated. Tag and field sets are space
+//! separated. The tag set is optional.
+
 pub mod macros;
 pub mod protocol;
 
@@ -13,7 +80,36 @@ use protocol::*;
 pub use protocol::{IntoFieldData, FieldData};
 pub use derive::*;
 
+/// Common result type. Only meaningful response is
+/// an error.
+pub type TelegrafResult = Result<(), TelegrafError>;
+
+/// Trait for writing custom types as a telegraf
+/// [crate::Point].
+///
+/// For most use cases it is recommended to
+/// derive this trait instead of manually
+/// implementing it.
+///
+/// Used via [crate::Client::write].
+///
+/// # Examples
+///
+/// ```
+/// use telegraf::*;
+///
+/// #[derive(Metric)]
+/// #[measurement = "my_metric"]
+/// struct MyMetric {
+///     field1: i32,
+///     #[telegraf(tag)]
+///     tag1: String,
+///     field2: f32,
+/// }
+/// ```
 pub trait Metric {
+    /// Converts internal attributes
+    /// to a Point format.
     fn to_point(&self) -> Point;
 }
 
@@ -108,7 +204,13 @@ impl Client {
 
     /// Writes the protocol representation of a point
     /// to the established connection.
-    pub fn write_point(&mut self, pt: &Point) -> Result<(), TelegrafError> {
+    pub fn write_point(&mut self, pt: &Point) -> TelegrafResult {
+        if pt.fields.is_empty() {
+            return Err(
+                TelegrafError::BadProtocol("points must have at least 1 field".to_owned())
+            );
+        }
+
         let lp = pt.to_lp();
         let bytes = lp.to_str().as_bytes();
         self.write_to_conn(bytes)
@@ -117,7 +219,13 @@ impl Client {
     /// Joins multiple points together and writes them in a batch. Useful
     /// if you want to write lots of points but not overwhelm local service or
     /// you want to ensure all points have the exact same timestamp.
-    pub fn write_points(&mut self, pts: &[Point]) -> Result<(), TelegrafError> {
+    pub fn write_points(&mut self, pts: &[Point]) -> TelegrafResult {
+        if pts.iter().any(|p| p.fields.is_empty()) {
+            return Err(
+                TelegrafError::BadProtocol("points must have at least 1 field".to_owned())
+            );
+        }
+
         let lp = pts.iter()
             .map(|p| p.to_lp().to_str().to_owned())
             .collect::<Vec<String>>()
@@ -125,12 +233,9 @@ impl Client {
         self.write_to_conn(lp.as_bytes())
     }
 
-    pub fn write<M: Metric>(&mut self, metric: M) -> Result<(), TelegrafError> {
+    pub fn write<M: Metric>(&mut self, metric: &M) -> TelegrafResult {
         let pt = metric.to_point();
-        let lp = pt.to_lp();
-        let bytes = lp.to_str().as_bytes();
-        self.write_to_conn(bytes)
-
+        self.write_point(&pt)
     }
 
     /// Closes and cleans up socket connection.
@@ -139,7 +244,7 @@ impl Client {
     }
 
     /// Writes byte array to internal outgoing socket.
-    fn write_to_conn(&mut self, data: &[u8]) -> Result<(), TelegrafError> {
+    fn write_to_conn(&mut self, data: &[u8]) -> TelegrafResult {
         self.conn.write(data).map(|_| Ok(()))?
     }
 }
