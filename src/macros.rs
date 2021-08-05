@@ -8,9 +8,7 @@
 /// Every tuple member except field values must be &str. Field values
 /// must implement [crate::IntoFieldData].
 ///
-/// ```
-/// (<measurement>, [(<tagName>, <tagVal>)], [(<fieldName>, <fieldVal>)])
-/// ```
+/// `(<measurement>, [(<tagName>, <tagVal>)], [(<fieldName>, <fieldVal>)])`
 ///
 /// Influx protocol requires every point to have at
 /// least one field, but tags are optional.
@@ -20,20 +18,23 @@
 /// Creates a point with one tag and two fields:
 ///
 /// ```
-/// let p = point!("measure", ("t1", "t1v"), ("f1", "f1v") ("f2", "f2v"))
+/// use telegraf::point;
+///
+/// let p = point!("measure", ("t1", "t1v"), ("f1", "f1v") ("f2", "f2v"));
 /// ```
 ///
 /// Creates a point with no tags and one field:
 ///
 /// ```
-/// let p = point!("measure", ("f1", "f1v"))
+/// use telegraf::point;
+///
+/// let p = point!("measure", ("f1", "f1v"));
 /// ```
 #[macro_export]
 macro_rules! point {
     ($measure:expr, $(($fname:expr, $fval:expr)) +) => {
         {
-            use $crate::IntoFieldData;
-            let mut fields: Vec<(String, Box<dyn IntoFieldData>)> = Vec::new();
+            let mut fields: Vec<(String, Box<dyn $crate::IntoFieldData>)> = Vec::new();
             $(
                 fields.push((String::from($fname), Box::new($fval)));
             )*
@@ -47,9 +48,8 @@ macro_rules! point {
     };
     ($measure:expr, $(($tname:expr, $tval:expr)) +, $(($fname:expr, $fval:expr)) +) => {
         {
-            use $crate::{IntoFieldData, Point};
             let mut tags: Vec<(String, String)> = Vec::new();
-            let mut fields: Vec<(String, Box<dyn IntoFieldData>)> = Vec::new();
+            let mut fields: Vec<(String, Box<dyn $crate::IntoFieldData>)> = Vec::new();
             $(
                 tags.push((String::from($tname), String::from($tval)));
             )*
@@ -58,7 +58,7 @@ macro_rules! point {
                 fields.push((String::from($fname), Box::new($fval)));
             )*
 
-            Point::new(
+            $crate::Point::new(
                 String::from($measure),
                 tags,
                 fields,

@@ -11,6 +11,11 @@ use std::net::{Shutdown, TcpStream};
 
 use protocol::*;
 pub use protocol::{IntoFieldData, FieldData};
+pub use derive::*;
+
+pub trait Metric {
+    fn to_point(&self) -> Point;
+}
 
 /// Error enum for library failures.
 #[derive(Debug)]
@@ -118,6 +123,14 @@ impl Client {
             .collect::<Vec<String>>()
             .join("");
         self.write_to_conn(lp.as_bytes())
+    }
+
+    pub fn write<M: Metric>(&mut self, metric: M) -> Result<(), TelegrafError> {
+        let pt = metric.to_point();
+        let lp = pt.to_lp();
+        let bytes = lp.to_str().as_bytes();
+        self.write_to_conn(bytes)
+
     }
 
     /// Closes and cleans up socket connection.

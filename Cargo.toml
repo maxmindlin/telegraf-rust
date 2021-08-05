@@ -10,7 +10,12 @@ readme = "README.md"
 keywords = ["telegraf", "influxdb", "influx", "metrics"]
 categories = ["database"]
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[workspace]
+members = ["derive", "tests"]
 
 [dependencies]
 url = "2.1.1"
+derive = { path = "derive" }
+
+# [features]
+# derive = ["telegraf_derive"]
