@@ -1,4 +1,4 @@
-//! Telegraf provides a lightweight client library for writing metrics
+//! Telegraf-rust provides a lightweight client library for writing metrics
 //! to a InfluxDB Telegraf service.
 //!
 //! This library does not provide querying or other InfluxDB client-library
@@ -13,7 +13,7 @@
 //!
 //! Once a client is setup there are multiple different ways to write points.
 //!
-//! 1. Define structs that represent metrics using the derive macro.
+//! ## Define structs that represent metrics using the derive macro.
 //!
 //! ```no_run
 //! use telegraf::*;
@@ -47,7 +47,7 @@
 //! As with any Telegraf point, tags are optional but at least one field
 //! is required.
 //!
-//! 2. Use the [crate::point] macro to do ad-hoc metrics.
+//! ## Use the [crate::point] macro to do ad-hoc metrics.
 //!
 //! ```no_run
 //! use telegraf::*;
@@ -65,7 +65,7 @@
 //! Measurement name, tag set, and field set are space separated. Tag and field sets are space
 //! separated. The tag set is optional.
 //!
-//! 3. Manual [crate::Point] initialization.
+//!  Manual [crate::Point] initialization.
 //!
 //! ```no_run
 //! use telegraf::{Client, Point};
@@ -86,6 +86,20 @@
 //!
 //! c.write_point(&p);
 //! ```
+//!
+//! ### Field Data
+//!
+//! Any attribute that will be the value of a field must implement the `IntoFieldData` trait provided by this library.
+//!
+//! ```
+//! use telegraf::FieldData;
+//!
+//! pub trait IntoFieldData {
+//!     fn into_field_data(&self) -> FieldData;
+//! }
+//! ```
+//!
+//! Out of the box implementations are provided for many common data types, but manual implementation is possible for other data types.
 
 pub mod macros;
 pub mod protocol;

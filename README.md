@@ -105,7 +105,7 @@ c.write_point(p)
 
 ### Field Data
 
-Any attribute that will the value of a field must implement the `IntoFieldData` trait provided by this library.
+Any attribute that will be the value of a field must implement the `IntoFieldData` trait provided by this library.
 
 ```rust
 pub trait IntoFieldData {

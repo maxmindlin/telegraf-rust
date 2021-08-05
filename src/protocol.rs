@@ -11,6 +11,8 @@ pub trait IntoFieldData {
 /// Influx types that can be used in a field.
 #[derive(Debug, Clone, PartialEq)]
 pub enum FieldData {
+    Boolean(bool),
+    UNumber(u64),
     Number(i64),
     Float(f64),
     Str(String),
@@ -52,6 +54,24 @@ impl LineProtocol {
     }
 }
 
+impl IntoFieldData for bool {
+    fn into_field_data(&self) -> FieldData {
+        FieldData::Boolean(*self)
+    }
+}
+
+impl IntoFieldData for u32 {
+    fn into_field_data(&self) -> FieldData {
+        FieldData::UNumber(*self as u64)
+    }
+}
+
+impl IntoFieldData for u64 {
+    fn into_field_data(&self) -> FieldData {
+        FieldData::UNumber(*self)
+    }
+}
+
 impl IntoFieldData for i32 {
     fn into_field_data(&self) -> FieldData {
         FieldData::Number(*self as i64)
@@ -90,6 +110,8 @@ impl IntoFieldData for String {
 
 pub fn get_field_string(value: &FieldData) -> String {
     match value {
+        FieldData::Boolean(b) => format!("{}", b),
+        FieldData::UNumber(n) => format!("{}u", n),
         FieldData::Number(n) => format!("{}i", n),
         FieldData::Float(f)  => format!("{}", f),
         FieldData::Str(s)    => format!(r#""{}""#, s)
@@ -119,6 +141,28 @@ mod tests {
     fn can_get_string_field_string() {
         let s = get_field_string(&FieldData::Str(String::from("hello")));
         assert_eq!(s, String::from(r#""hello""#));
+    }
+
+    #[test]
+    fn can_get_bool_field_string() {
+        let s1 = get_field_string(&FieldData::Boolean(true));
+        let s2 = get_field_string(&FieldData::Boolean(false));
+        assert_eq!(s1, String::from("true"));
+        assert_eq!(s2, String::from("false"));
+    }
+
+    #[test]
+    fn can_get_uint_field_string() {
+        let s = get_field_string(&FieldData::UNumber(10));
+        assert_eq!(s, String::from("10u"));
+    }
+
+    #[test]
+    fn can_get_signed_int_field_string() {
+        let s1 = get_field_string(&FieldData::Number(10));
+        let s2 = get_field_string(&FieldData::Number(-10));
+        assert_eq!(s1, String::from("10i"));
+        assert_eq!(s2, String::from("-10i"));
     }
 
     #[test]
