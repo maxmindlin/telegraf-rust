@@ -12,7 +12,7 @@ This library does not provide querying or other InfluxDB client-library features
 
 Add it to your Cargo.toml:
 
-```
+```toml
 [dependencies]
 telegraf = "*"
 ```
