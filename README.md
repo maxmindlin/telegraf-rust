@@ -57,7 +57,7 @@ use telegraf::*;
 
 let mut client = Client::new("tcp://localhost:8094".to_owned()).unwrap();
 
-let p = point!("measurement", ("tag1", "tag1Val"), ("field1", "field1Val"));
+let p = point!("measurement", ("tag1", "tag1Val"), ("field1", "val") ("field2", 10);
 client.write_point(&p);
 ```
 
@@ -67,7 +67,7 @@ The macro syntax is the following format:
 (<measurement>, [(<tagName>, <tagVal>)], [(<fieldName>, <fieldVal>)])
 ```
 
-Measurement name, tag set, and field set are space separated. Tag and field sets are space separated. The tag set is optional.
+Measurement name, tag set, and field set are comma separated. Tag and field tuples are space separated. The tag set is optional.
 
 ## Manual `Point` initialization
 
