@@ -26,7 +26,7 @@ Using this library assumes you have a socket listener setup in your Telegraf con
   service_address = "tcp://localhost:8094"
 ```
 
-All usage will start by creating a socket connection via a `Client`. This supports multiple connection protocols - which one you use will be determined by how your Telegraf `input.socket_listener` configuration is setup.
+All usage will start by creating a socket connection via a `Client`. This supports multiple connection protocols - which one you use will be determined by how your Telegraf `input.socket_listener` configuration is setup. Telegraf-rust supports both `TCP` and `UDP` socket connections.
 
 Once a client is setup there are multiple different ways to write points:
 
