@@ -19,6 +19,13 @@ telegraf = "*"
 
 # How to use
 
+Using this library assumes you have a socket listener setup in your Telegraf configuration file. An example TCP connection looks like so:
+
+```toml
+[[inputs.socket_listener]]
+  service_address = "tcp://localhost:8094"
+```
+
 All usage will start by creating a socket connection via a `Client`. This supports multiple connection protocols - which one you use will be determined by how your Telegraf `input.socket_listener` configuration is setup.
 
 Once a client is setup there are multiple different ways to write points:
