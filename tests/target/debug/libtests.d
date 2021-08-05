@@ -1,1 +1,0 @@
-/Users/maxmindlin/dev/telegraf-rust/tests/target/debug/libtests.rlib: /Users/maxmindlin/dev/telegraf-rust/src/lib.rs /Users/maxmindlin/dev/telegraf-rust/src/macros.rs /Users/maxmindlin/dev/telegraf-rust/src/protocol.rs /Users/maxmindlin/dev/telegraf-rust/telegraf_derive/src/lib.rs /Users/maxmindlin/dev/telegraf-rust/tests/src/lib.rs build.rs
