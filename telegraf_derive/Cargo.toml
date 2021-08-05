@@ -5,6 +5,7 @@ authors = ["Max Mindlin <maxmindlin@gmail.com>"]
 edition = "2018"
 license = "MIT"
 repository = "https://github.com/maxmindlin/telegraf-rust"
+description = "Derive macros for the telegraf-rust library"
 
 [lib]
 proc-macro = true
