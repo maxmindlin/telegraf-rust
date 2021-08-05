@@ -64,6 +64,28 @@
 //!
 //! Measurement name, tag set, and field set are space separated. Tag and field sets are space
 //! separated. The tag set is optional.
+//!
+//! 3. Manual [crate::Point] initialization.
+//!
+//! ```no_run
+//! use telegraf::{Client, Point};
+//!
+//! let mut c = Client::new("tcp://localhost:8094".to_owned()).unwrap();
+//!
+//! let p = Point::new(
+//!     String::from("measurement"),
+//!     vec![
+//!         (String::from("tag1"), String::from("tag1value"))
+//!     ],
+//!     vec![
+//!         (String::from("field1"), Box::new(10)),
+//!         (String::from("field2"), Box::new(20.5)),
+//!         (String::from("field3"), Box::new("anything!"))
+//!     ]
+//! );
+//!
+//! c.write_point(&p);
+//! ```
 
 pub mod macros;
 pub mod protocol;
