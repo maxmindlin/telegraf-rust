@@ -51,7 +51,7 @@ macro_rules! point {
             let mut tags: Vec<(String, String)> = Vec::new();
             let mut fields: Vec<(String, Box<dyn $crate::IntoFieldData>)> = Vec::new();
             $(
-                tags.push((String::from($tname), String::from($tval)));
+                tags.push((String::from($tname), format!("{}", $tval)));
             )*
 
             $(

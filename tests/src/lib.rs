@@ -11,6 +11,8 @@ struct Tags {
     #[telegraf(tag)]
     t: String,
     f: f32,
+    #[telegraf(tag)]
+    t2: f32,
 }
 
 #[derive(Metric)]
@@ -39,8 +41,8 @@ mod tests {
 
     #[test]
     fn can_derive_with_tags() {
-        let s = Tags { i: 1, t: "t".to_string(), f: 2. };
-        let exp = point!("Tags", ("t", "t"), ("i", 1) ("f", 2.));
+        let s = Tags { i: 1, t: "t".to_string(), f: 2., t2: 1. };
+        let exp = point!("Tags", ("t", "t") ("t2", 1.), ("i", 1) ("f", 2.));
         assert_eq!(s.to_point(), exp);
     }
 
