@@ -35,7 +35,7 @@ Once a client is setup there are multiple different ways to write points:
 ```rust
 use telegraf::*;
 
-let mut client = Client::new("tcp://localhost:8094".to_owned()).unwrap();
+let mut client = Client::new("tcp://localhost:8094").unwrap();
 
 #[derive(Metric)]
 struct MyMetric {
@@ -44,7 +44,7 @@ struct MyMetric {
     tag1: String,
 }
 
-let point = MyMetric { field1: 1, tag1: "tag".to_owned() };
+let point = MyMetric { field1: 1, tag1: "tag" };
 client.write(&point);
 ```
 
@@ -67,7 +67,7 @@ As with any Telegraf point, tags are optional but at least one field is required
 ```rust
 use telegraf::*;
 
-let mut client = Client::new("tcp://localhost:8094".to_owned()).unwrap();
+let mut client = Client::new("tcp://localhost:8094").unwrap();
 
 let p = point!("measurement", ("tag1", "tag1Val"), ("field1", "val") ("field2", 10));
 client.write_point(&p);

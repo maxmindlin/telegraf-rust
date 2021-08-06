@@ -18,7 +18,7 @@
 //! ```no_run
 //! use telegraf::*;
 //!
-//! let mut client = Client::new("tcp://localhost:8094".to_owned()).unwrap();
+//! let mut client = Client::new("tcp://localhost:8094").unwrap();
 //!
 //! #[derive(Metric)]
 //! struct MyMetric {
@@ -52,7 +52,7 @@
 //! ```no_run
 //! use telegraf::*;
 //!
-//! let mut client = Client::new("tcp://localhost:8094".to_owned()).unwrap();
+//! let mut client = Client::new("tcp://localhost:8094").unwrap();
 //!
 //! let p = point!("measurement", ("tag1", "tag1Val"), ("field1", "field1Val"));
 //! client.write_point(&p);
@@ -70,7 +70,7 @@
 //! ```no_run
 //! use telegraf::{Client, Point};
 //!
-//! let mut c = Client::new("tcp://localhost:8094".to_owned()).unwrap();
+//! let mut c = Client::new("tcp://localhost:8094").unwrap();
 //!
 //! let p = Point::new(
 //!     String::from("measurement"),
@@ -236,8 +236,8 @@ impl Point {
 impl Client {
     /// Creates a new Client. Determines socket protocol from
     /// provided URL.
-    pub fn new(conn_url: String) -> Result<Self, TelegrafError> {
-        let conn = create_connection(&conn_url)?;
+    pub fn new(conn_url: &str) -> Result<Self, TelegrafError> {
+        let conn = create_connection(conn_url)?;
         Ok(Self { conn })
     }
 
