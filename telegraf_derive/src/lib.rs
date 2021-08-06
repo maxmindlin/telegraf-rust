@@ -16,13 +16,35 @@ fn expand_metric(tokens: TokenStream) -> TokenStream {
     let krate = krate();
     let input = parse_macro_input!(tokens as DeriveInput);
 
+    let name = &input.ident;
+    let measurement = get_measurement_name(&input);
+
+    let generics = add_trait_bounds(input.generics);
+    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
+    let pt = get_to_point(&input.data);
+
+    let expanded = quote! {
+        impl #impl_generics #krate::Metric for #name #ty_generics #where_clause {
+            fn to_point(&self) -> #krate::Point {
+                let mut pf: Vec<(String, Box<dyn #krate::IntoFieldData>)> = Vec::new();
+                let mut pt: Vec<(String, String)> = Vec::new();
+                #pt
+                #krate::Point::new(#measurement, pt, pf)
+            }
+        }
+    };
+
+    TokenStream::from(expanded)
+}
+
+fn get_measurement_name(input: &DeriveInput) -> TStream2 {
+    let default = &input.ident;
     let measurement = input.attrs.iter().filter(|a| {
         a.path.segments.len() == 1
             && a.path.segments[0].ident == "measurement"
     }).nth(0);
 
-    let name = input.ident;
-    let n = match measurement {
+    match measurement {
         Some(attr) => {
             let q = attr.tokens
                 .clone()
@@ -35,25 +57,8 @@ fn expand_metric(tokens: TokenStream) -> TokenStream {
                 .unwrap();
             quote!(#q.to_string())
         }
-        None => quote!(stringify!(#name).to_string()),
-    };
-
-    let generics = add_trait_bounds(input.generics);
-    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
-    let pt = get_to_point(&input.data);
-
-    let expanded = quote! {
-        impl #impl_generics #krate::Metric for #name #ty_generics #where_clause {
-            fn to_point(&self) -> #krate::Point {
-                let mut pf: Vec<(String, Box<dyn #krate::IntoFieldData>)> = Vec::new();
-                let mut pt: Vec<(String, String)> = Vec::new();
-                #pt
-                #krate::Point::new(#n, pt, pf)
-            }
-        }
-    };
-
-    TokenStream::from(expanded)
+        None => quote!(stringify!(#default).to_string()),
+    }
 }
 
 fn add_trait_bounds(mut generics: Generics) -> Generics {

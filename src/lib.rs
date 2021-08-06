@@ -237,7 +237,7 @@ impl Client {
     /// Creates a new Client. Determines socket protocol from
     /// provided URL.
     pub fn new(conn_url: &str) -> Result<Self, TelegrafError> {
-        let conn = create_connection(conn_url)?;
+        let conn = Connector::new(conn_url)?;
         Ok(Self { conn })
     }
 
@@ -310,6 +310,32 @@ impl Connector {
         };
         r.map(|_| Ok(()))?
     }
+
+    fn new(url: &str) -> Result<Self, TelegrafError> {
+        match Url::parse(url) {
+            Ok(u) => {
+                let host = u.host_str().t_unwrap("invalid URL host")?;
+                let port = u.port().t_unwrap("invalid URL port")?;
+                let scheme = u.scheme();
+                match scheme {
+                    "tcp" => {
+                        let conn = TcpStream::connect(format!("{}:{}", host, port))?;
+                        Ok(Connector::TCP(TcPConnection { conn }))
+                    },
+                    "udp" => {
+                        let socket = UdpSocket::bind(&[SocketAddr::from(([0, 0, 0, 0,],  0))][..])?;
+                        let addr = u.socket_addrs(|| None)?;
+                        socket.connect(&*addr)?;
+                        socket.set_nonblocking(true)?;
+                        Ok(Connector::UDP(UdPConnection { conn: socket }))
+                    },
+                    "unix" => Err(TelegrafError::BadProtocol("unix not supported yet".to_owned())),
+                    _ => Err(TelegrafError::BadProtocol(format!("unknown connection protocol {}", scheme)))
+                }
+            },
+            Err(_) => Err(TelegrafError::BadProtocol(format!("invalid connection URL {}", url)))
+        }
+    }
 }
 
 impl TcPConnection {
@@ -328,36 +354,19 @@ impl fmt::Display for TelegrafError {
     }
 }
 
-fn create_connection(conn_url: &str) -> Result<Connector, TelegrafError> {
-    let url = Url::parse(&conn_url);
-        match url {
-            Ok(u) => {
-                let host = u.host_str().unwrap();
-                let port = u.port().unwrap();
-                let scheme = u.scheme();
-                match scheme {
-                    "tcp" => {
-                        let conn = TcpStream::connect(format!("{}:{}", host, port))?;
-                        Ok(Connector::TCP(TcPConnection { conn }))
-                    },
-                    "udp" => {
-                        let socket = UdpSocket::bind(&[SocketAddr::from(([0, 0, 0, 0,],  0))][..])?;
-                        let addr = u.socket_addrs(|| None)?;
-                        socket.connect(&*addr)?;
-                        socket.set_nonblocking(true)?;
-                        Ok(Connector::UDP(UdPConnection { conn: socket }))
-                    },
-                    "unix" => Err(TelegrafError::BadProtocol("unix not supported yet".to_owned())),
-                    _ => Err(TelegrafError::BadProtocol(format!("unknown connection protocol {}", scheme)))
-                }
-            },
-            Err(_) => Err(TelegrafError::BadProtocol(format!("invalid connection URL {}", conn_url)))
-        }
-}
-
 impl From<Error> for TelegrafError {
     fn from(e: Error) -> Self {
-        Self::IoError(e)
+        Self::ConnectionError(e.to_string())
+    }
+}
+
+trait TelegrafUnwrap<T> {
+    fn t_unwrap(self, msg: &str) -> Result<T, TelegrafError>;
+}
+
+impl<T> TelegrafUnwrap<T> for Option<T> {
+    fn t_unwrap(self, msg: &str) -> Result<T, TelegrafError> {
+        self.ok_or(TelegrafError::ConnectionError(msg.to_owned()))
     }
 }
 
