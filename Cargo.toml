@@ -11,8 +11,7 @@ keywords = ["telegraf", "influxdb", "influx", "metrics"]
 categories = ["database"]
 
 [workspace]
-members = ["telegraf_derive"]
-exclude = ["tests"]
+members = ["telegraf_derive", "tests"]
 
 [dependencies]
 url = "2.1.1"

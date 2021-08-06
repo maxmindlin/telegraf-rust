@@ -233,7 +233,6 @@ impl Point {
     }
 }
 
-
 impl Client {
     /// Creates a new Client. Determines socket protocol from
     /// provided URL.
@@ -273,6 +272,8 @@ impl Client {
         self.write_to_conn(lp.as_bytes())
     }
 
+    /// Convenience wrapper around writing points for types
+    /// that implement [crate::Metric].
     pub fn write<M: Metric>(&mut self, metric: &M) -> TelegrafResult {
         let pt = metric.to_point();
         self.write_point(&pt)
