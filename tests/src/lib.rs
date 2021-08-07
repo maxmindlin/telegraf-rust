@@ -16,6 +16,11 @@ struct Tags {
 }
 
 #[derive(Metric)]
+struct StringField {
+    s: String,
+}
+
+#[derive(Metric)]
 struct TagsWithLifetime<'a> {
     i: f32,
     #[telegraf(tag)]
@@ -31,6 +36,13 @@ struct CustomMeasurementName {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn can_derive_string_fields() {
+        let s = StringField { s: "s".into() };
+        let exp = point!("StringField", ("s", "s"));
+        assert_eq!(s.to_point(), exp);
+    }
 
     #[test]
     fn can_derive_without_tags() {

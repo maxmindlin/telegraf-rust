@@ -65,7 +65,7 @@
 //! Measurement name, tag set, and field set are space separated. Tag and field sets are space
 //! separated. The tag set is optional.
 //!
-//!  Manual [crate::Point] initialization.
+//! ## Manual [crate::Point] initialization.
 //!
 //! ```no_run
 //! use telegraf::{Client, Point};

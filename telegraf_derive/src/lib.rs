@@ -121,7 +121,7 @@ fn get_to_point(data: &Data) -> TStream2 {
                             if f.attrs.iter().any(is_tag) {
                                 quote!(pt.push((stringify!(#name).to_string(), format!("{}", self.#name)));)
                             } else {
-                                quote!(pf.push((stringify!(#name).to_string(), Box::new(self.#name)));)
+                                quote!(pf.push((stringify!(#name).to_string(), Box::new(self.#name.clone())));)
                             }
                         })
                         .collect()
