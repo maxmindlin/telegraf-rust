@@ -1,7 +1,7 @@
 use proc_macro::TokenStream;
 use proc_macro2::{TokenStream as TStream2, TokenTree};
 use quote::quote;
-use syn::{Attribute, Data, DeriveInput, Fields, GenericParam, Generics, parse_macro_input, parse_quote};
+use syn::{Attribute, Data, DeriveInput, Fields, GenericParam, Generics, parse_macro_input, parse_quote, Type, Path};
 
 fn krate() -> TStream2 {
     quote!(::telegraf)
@@ -110,6 +110,12 @@ fn is_tag(attr: &Attribute) -> bool {
 }
 
 fn get_to_point(data: &Data) -> TStream2 {
+    fn path_is_option(path: &Path) -> bool {
+        path.leading_colon.is_none()
+            && path.segments.len() == 1
+            && path.segments.iter().next().unwrap().ident == "Option"
+    }
+
     match *data {
         Data::Struct(ref data) => {
             match data.fields {
@@ -117,11 +123,33 @@ fn get_to_point(data: &Data) -> TStream2 {
                     fields.named
                         .iter()
                         .map(|f| {
-                            let name = &f.ident;
-                            if f.attrs.iter().any(is_tag) {
-                                quote!(pt.push((stringify!(#name).to_string(), format!("{}", self.#name)));)
-                            } else {
-                                quote!(pf.push((stringify!(#name).to_string(), Box::new(self.#name.clone())));)
+                            match &f.ty {
+                                Type::Path(typath) if typath.qself.is_none() && path_is_option(&typath.path) => {
+                                    let name = &f.ident;
+                                    if f.attrs.iter().any(is_tag) {
+                                        quote!(
+                                            if let Some(ref v) = self.#name {
+                                                pt.push((stringify!(#name).to_string(), format!("{}", v)));
+                                            }
+                                        )
+                                        // quote!(pt.push((stringify!(#name).to_string(), format!("{}", self.#name)));)
+                                    } else {
+                                        quote!(
+                                            if let Some(v) = self.#name {
+                                                pf.push((stringify!(#name).to_string(), Box::new(v.clone())));
+                                            }
+                                        )
+                                        // quote!(pf.push((stringify!(#name).to_string(), Box::new(self.#name.clone())));)
+                                    }
+                                },
+                                _ => {
+                                    let name = &f.ident;
+                                    if f.attrs.iter().any(is_tag) {
+                                        quote!(pt.push((stringify!(#name).to_string(), format!("{}", self.#name)));)
+                                    } else {
+                                        quote!(pf.push((stringify!(#name).to_string(), Box::new(self.#name.clone())));)
+                                    }
+                                }
                             }
                         })
                         .collect()

@@ -15,4 +15,5 @@ members = ["telegraf_derive", "tests"]
 
 [dependencies]
 url = "2.1.1"
-telegraf_derive = { path = "telegraf_derive", version = "0.1.0" }
+telegraf_derive = { path = "./telegraf_derive" }
+# telegraf_derive = { path = "telegraf_derive", version = "0.1.0" }

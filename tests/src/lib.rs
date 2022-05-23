@@ -16,6 +16,13 @@ struct Tags {
 }
 
 #[derive(Metric)]
+struct Optionals {
+    i: Option<i32>,
+    #[telegraf(tag)]
+    t: Option<String>,
+}
+
+#[derive(Metric)]
 struct StringField {
     s: String,
 }
@@ -69,6 +76,13 @@ mod tests {
     fn can_derive_with_meaurement_attr() {
         let s = CustomMeasurementName { i: 1 };
         let exp = point!("custom", ("i", 1));
+        assert_eq!(s.to_point(), exp);
+    }
+
+    #[test]
+    fn can_derive_with_optionals() {
+        let s = Optionals { i: Some(1), t: Some("t".into()) };
+        let exp = point!("Optionals", ("t", "t"), ("i", 1));
         assert_eq!(s.to_point(), exp);
     }
 }
