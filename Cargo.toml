@@ -1,6 +1,6 @@
 [package]
 name = "telegraf"
-version = "0.4.2"
+version = "0.4.3"
 authors = ["Max Mindlin <maxmindlin@gmail.com>"]
 edition = "2018"
 repository = "https://github.com/maxmindlin/telegraf-rust"
