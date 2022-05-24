@@ -16,6 +16,18 @@ struct Tags {
 }
 
 #[derive(Metric)]
+struct Optionals {
+    i: Option<i32>,
+    #[telegraf(tag)]
+    t: Option<String>,
+}
+
+#[derive(Metric)]
+struct StringField {
+    s: String,
+}
+
+#[derive(Metric)]
 struct TagsWithLifetime<'a> {
     i: f32,
     #[telegraf(tag)]
@@ -31,6 +43,13 @@ struct CustomMeasurementName {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn can_derive_string_fields() {
+        let s = StringField { s: "s".into() };
+        let exp = point!("StringField", ("s", "s"));
+        assert_eq!(s.to_point(), exp);
+    }
 
     #[test]
     fn can_derive_without_tags() {
@@ -57,6 +76,17 @@ mod tests {
     fn can_derive_with_meaurement_attr() {
         let s = CustomMeasurementName { i: 1 };
         let exp = point!("custom", ("i", 1));
+        assert_eq!(s.to_point(), exp);
+    }
+
+    #[test]
+    fn can_derive_with_optionals() {
+        let s = Optionals { i: Some(1), t: Some("t".into()) };
+        let exp = point!("Optionals", ("t", "t"), ("i", 1));
+        assert_eq!(s.to_point(), exp);
+
+        let s = Optionals { i: Some(1), t: None };
+        let exp = point!("Optionals", ("i", 1));
         assert_eq!(s.to_point(), exp);
     }
 }
