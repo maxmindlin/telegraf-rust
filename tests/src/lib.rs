@@ -84,5 +84,9 @@ mod tests {
         let s = Optionals { i: Some(1), t: Some("t".into()) };
         let exp = point!("Optionals", ("t", "t"), ("i", 1));
         assert_eq!(s.to_point(), exp);
+
+        let s = Optionals { i: Some(1), t: None };
+        let exp = point!("Optionals", ("i", 1));
+        assert_eq!(s.to_point(), exp);
     }
 }
