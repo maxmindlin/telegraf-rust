@@ -132,14 +132,12 @@ fn get_to_point(data: &Data) -> TStream2 {
                                                 pt.push((stringify!(#name).to_string(), format!("{}", v)));
                                             }
                                         )
-                                        // quote!(pt.push((stringify!(#name).to_string(), format!("{}", self.#name)));)
                                     } else {
                                         quote!(
-                                            if let Some(v) = self.#name {
+                                            if let Some(ref v) = self.#name {
                                                 pf.push((stringify!(#name).to_string(), Box::new(v.clone())));
                                             }
                                         )
-                                        // quote!(pf.push((stringify!(#name).to_string(), Box::new(self.#name.clone())));)
                                     }
                                 },
                                 _ => {
