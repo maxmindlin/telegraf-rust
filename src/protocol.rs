@@ -43,10 +43,13 @@ pub struct Field {
 impl LineProtocol {
     pub fn new(
         measurement: String,
-        tags: String,
+        tags: Option<String>,
         fields: String,
     ) -> Self {
-        Self(format!("{},{} {}\n", measurement, tags, fields))
+        match tags {
+            Some(t) => Self(format!("{},{} {}\n", measurement, t, fields)),
+            None => Self(format!("{} {}\n", measurement, fields))
+        }
     }
 
     pub fn to_str(&self) -> &str {
