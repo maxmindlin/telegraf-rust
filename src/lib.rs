@@ -227,7 +227,11 @@ impl Point {
             .into_iter()
             .map(Attr::Field)
             .collect();
-        let tag_str = format_attr(tag_attrs);
+        let tag_str = if tag_attrs.is_empty() {
+            None
+        } else {
+            Some(format_attr(tag_attrs))
+        };
         let field_str = format_attr(field_attrs);
         LineProtocol::new(self.measurement.clone(), tag_str, field_str)
     }
@@ -390,5 +394,19 @@ mod tests {
 
         let lp = p.to_lp();
         assert_eq!(lp.to_str(), "Foo,t1=v f1=10i,f2=10.3,f3=\"b\"\n");
+    }
+
+    #[test]
+    fn can_create_point_lp_no_tags() {
+        let p = Point::new(
+            String::from("Foo"),
+            vec![],
+            vec![
+                ("f1".to_owned(), Box::new(10)),
+                ("f2".to_owned(), Box::new(10.3)),
+            ]
+        );
+        let lp = p.to_lp();
+        assert_eq!(lp.to_str(), "Foo f1=10i,f2=10.3\n");
     }
 }
