@@ -63,6 +63,18 @@ impl IntoFieldData for bool {
     }
 }
 
+impl IntoFieldData for u8 {
+    fn into_field_data(&self) -> FieldData {
+        FieldData::UNumber(*self as u64)
+    }
+}
+
+impl IntoFieldData for u16 {
+    fn into_field_data(&self) -> FieldData {
+        FieldData::UNumber(*self as u64)
+    }
+}
+
 impl IntoFieldData for u32 {
     fn into_field_data(&self) -> FieldData {
         FieldData::UNumber(*self as u64)
@@ -72,6 +84,18 @@ impl IntoFieldData for u32 {
 impl IntoFieldData for u64 {
     fn into_field_data(&self) -> FieldData {
         FieldData::UNumber(*self)
+    }
+}
+
+impl IntoFieldData for i8 {
+    fn into_field_data(&self) -> FieldData {
+        FieldData::Number(*self as i64)
+    }
+}
+
+impl IntoFieldData for i16 {
+    fn into_field_data(&self) -> FieldData {
+        FieldData::Number(*self as i64)
     }
 }
 
