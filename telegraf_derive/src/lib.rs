@@ -1,7 +1,10 @@
 use proc_macro::TokenStream;
 use proc_macro2::{TokenStream as TStream2, TokenTree};
 use quote::quote;
-use syn::{Attribute, Data, DeriveInput, Fields, GenericParam, Generics, parse_macro_input, parse_quote, Type, Path};
+use syn::{
+    parse_macro_input, parse_quote, Attribute, Data, DeriveInput, Fields, GenericParam, Generics,
+    Path, Type,
+};
 
 fn krate() -> TStream2 {
     quote!(::telegraf)
@@ -39,20 +42,21 @@ fn expand_metric(tokens: TokenStream) -> TokenStream {
 
 fn get_measurement_name(input: &DeriveInput) -> TStream2 {
     let default = &input.ident;
-    let measurement = input.attrs.iter().filter(|a| {
-        a.path.segments.len() == 1
-            && a.path.segments[0].ident == "measurement"
-    }).nth(0);
+    let measurement = input
+        .attrs
+        .iter()
+        .find(|a| a.path.segments.len() == 1 && a.path.segments[0].ident == "measurement");
 
     match measurement {
         Some(attr) => {
-            let q = attr.tokens
+            let q = attr
+                .tokens
                 .clone()
                 .into_iter()
                 .nth(1)
                 .map(|t| match t {
                     TokenTree::Literal(l) => l,
-                    _ => panic!("unexpected type")
+                    _ => panic!("unexpected type"),
                 })
                 .unwrap();
             quote!(#q.to_string())
@@ -88,7 +92,7 @@ fn check_attr(t_tree: TokenTree, cmp: &str) -> bool {
             .into_iter()
             .next()
             .map(|token_tree| match token_tree {
-                TokenTree::Ident(ident) => ident.to_string() == cmp,
+                TokenTree::Ident(ident) => ident == cmp,
                 _ => false,
             })
             .unwrap(),
