@@ -104,16 +104,17 @@
 pub mod macros;
 pub mod protocol;
 
-use std::fmt;
-use std::io;
-use std::io::{Write, Error};
-use std::net::SocketAddr;
-use std::net::UdpSocket;
+use std::{
+    fmt,
+    io::{self, Error, Write},
+    net::{Shutdown, SocketAddr, TcpStream, UdpSocket},
+    os::unix::net::{UnixDatagram, UnixStream},
+};
+
 use url::Url;
-use std::net::{Shutdown, TcpStream};
 
 use protocol::*;
-pub use protocol::{IntoFieldData, FieldData};
+pub use protocol::{FieldData, IntoFieldData};
 pub use telegraf_derive::*;
 
 /// Common result type. Only meaningful response is
@@ -157,7 +158,7 @@ pub enum TelegrafError {
     /// Error with internal socket connection.
     ConnectionError(String),
     /// Error when a bad protocol is created.
-    BadProtocol(String)
+    BadProtocol(String),
 }
 
 /// A single influx metric. Handles conversion from Rust types
@@ -172,28 +173,21 @@ pub enum TelegrafError {
 pub struct Point {
     pub measurement: String,
     pub tags: Vec<Tag>,
-    pub fields: Vec<Field>
+    pub fields: Vec<Field>,
 }
 
 /// Connection client used to handle socket connection management
 /// and writing.
 pub struct Client {
-    conn: Connector
+    conn: Connector,
 }
 
 /// Different types of connections that the library supports.
 enum Connector {
-    TCP(TcPConnection),
-    UDP(UdPConnection),
-}
-
-/// TCP socket connection container.
-struct TcPConnection {
-    conn: TcpStream
-}
-
-struct UdPConnection {
-    conn: UdpSocket
+    Tcp(TcpStream),
+    Udp(UdpSocket),
+    Unix(UnixStream),
+    Unixgram(UnixDatagram),
 }
 
 impl Point {
@@ -203,11 +197,16 @@ impl Point {
         tags: Vec<(String, String)>,
         fields: Vec<(String, Box<dyn IntoFieldData>)>,
     ) -> Self {
-        let t = tags.into_iter()
-            .map(|(n,v)| Tag { name: n, value: v })
+        let t = tags
+            .into_iter()
+            .map(|(n, v)| Tag { name: n, value: v })
             .collect();
-        let f = fields.into_iter()
-            .map(|(n,v)| Field { name: n, value: v.into_field_data() })
+        let f = fields
+            .into_iter()
+            .map(|(n, v)| Field {
+                name: n,
+                value: v.field_data(),
+            })
             .collect();
         Self {
             measurement,
@@ -217,16 +216,8 @@ impl Point {
     }
 
     fn to_lp(&self) -> LineProtocol {
-        let tag_attrs: Vec<Attr> = self.tags
-            .to_owned()
-            .into_iter()
-            .map(Attr::Tag)
-            .collect();
-        let field_attrs: Vec<Attr> = self.fields
-            .to_owned()
-            .into_iter()
-            .map(Attr::Field)
-            .collect();
+        let tag_attrs: Vec<Attr> = self.tags.iter().cloned().map(Attr::Tag).collect();
+        let field_attrs: Vec<Attr> = self.fields.iter().cloned().map(Attr::Field).collect();
         let tag_str = if tag_attrs.is_empty() {
             None
         } else {
@@ -249,9 +240,9 @@ impl Client {
     /// to the established connection.
     pub fn write_point(&mut self, pt: &Point) -> TelegrafResult {
         if pt.fields.is_empty() {
-            return Err(
-                TelegrafError::BadProtocol("points must have at least 1 field".to_owned())
-            );
+            return Err(TelegrafError::BadProtocol(
+                "points must have at least 1 field".to_owned(),
+            ));
         }
 
         let lp = pt.to_lp();
@@ -264,12 +255,13 @@ impl Client {
     /// you want to ensure all points have the exact same timestamp.
     pub fn write_points(&mut self, pts: &[Point]) -> TelegrafResult {
         if pts.iter().any(|p| p.fields.is_empty()) {
-            return Err(
-                TelegrafError::BadProtocol("points must have at least 1 field".to_owned())
-            );
+            return Err(TelegrafError::BadProtocol(
+                "points must have at least 1 field".to_owned(),
+            ));
         }
 
-        let lp = pts.iter()
+        let lp = pts
+            .iter()
             .map(|p| p.to_lp().to_str().to_owned())
             .collect::<Vec<String>>()
             .join("");
@@ -289,28 +281,29 @@ impl Client {
     }
 
     /// Writes byte array to internal outgoing socket.
-    fn write_to_conn(&mut self, data: &[u8]) -> TelegrafResult {
+    pub fn write_to_conn(&mut self, data: &[u8]) -> TelegrafResult {
         self.conn.write(data).map(|_| Ok(()))?
     }
 }
 
 impl Connector {
-    pub fn close(&self) -> io::Result<()> {
+    fn close(&self) -> io::Result<()> {
+        use Connector::*;
         match self {
-            Self::TCP(c) => c.close(),
-            // UdP socket doesnt have a graceful close.
-            Self::UDP(_) => Ok(()),
+            Tcp(c) => c.shutdown(Shutdown::Both),
+            Unix(c) => c.shutdown(Shutdown::Both),
+            Unixgram(c) => c.shutdown(Shutdown::Both),
+            // Udp socket doesnt have a graceful close.
+            Udp(_) => Ok(()),
         }
     }
 
     fn write(&mut self, buf: &[u8]) -> io::Result<()> {
         let r = match self {
-            Self::TCP(ref mut c) => {
-                c.conn.write(buf)
-            }
-            Self::UDP(c) => {
-                c.conn.send(buf)
-            }
+            Self::Tcp(c) => c.write(buf),
+            Self::Udp(c) => c.send(buf),
+            Self::Unix(c) => c.write(buf),
+            Self::Unixgram(c) => c.send(buf),
         };
         r.map(|_| Ok(()))?
     }
@@ -318,33 +311,43 @@ impl Connector {
     fn new(url: &str) -> Result<Self, TelegrafError> {
         match Url::parse(url) {
             Ok(u) => {
-                let host = u.host_str().t_unwrap("invalid URL host")?;
-                let port = u.port().t_unwrap("invalid URL port")?;
                 let scheme = u.scheme();
                 match scheme {
                     "tcp" => {
-                        let conn = TcpStream::connect(format!("{}:{}", host, port))?;
-                        Ok(Connector::TCP(TcPConnection { conn }))
-                    },
-                    "udp" => {
-                        let socket = UdpSocket::bind(&[SocketAddr::from(([0, 0, 0, 0,],  0))][..])?;
                         let addr = u.socket_addrs(|| None)?;
-                        socket.connect(&*addr)?;
-                        socket.set_nonblocking(true)?;
-                        Ok(Connector::UDP(UdPConnection { conn: socket }))
-                    },
-                    "unix" => Err(TelegrafError::BadProtocol("unix not supported yet".to_owned())),
-                    _ => Err(TelegrafError::BadProtocol(format!("unknown connection protocol {}", scheme)))
+                        let conn = TcpStream::connect(&*addr)?;
+                        Ok(Connector::Tcp(conn))
+                    }
+                    "udp" => {
+                        let addr = u.socket_addrs(|| None)?;
+                        let conn = UdpSocket::bind(&[SocketAddr::from(([0, 0, 0, 0], 0))][..])?;
+                        conn.connect(&*addr)?;
+                        conn.set_nonblocking(true)?;
+                        Ok(Connector::Udp(conn))
+                    }
+                    "unix" => {
+                        let path = u.path();
+                        let conn = UnixStream::connect(path)?;
+                        Ok(Connector::Unix(conn))
+                    }
+                    "unixgram" => {
+                        let path = u.path();
+                        let conn = UnixDatagram::unbound()?;
+                        conn.connect(path)?;
+                        conn.set_nonblocking(true)?;
+                        Ok(Connector::Unixgram(conn))
+                    }
+                    _ => Err(TelegrafError::BadProtocol(format!(
+                        "unknown connection protocol {}",
+                        scheme
+                    ))),
                 }
-            },
-            Err(_) => Err(TelegrafError::BadProtocol(format!("invalid connection URL {}", url)))
+            }
+            Err(_) => Err(TelegrafError::BadProtocol(format!(
+                "invalid connection URL {}",
+                url
+            ))),
         }
-    }
-}
-
-impl TcPConnection {
-    pub fn close(&self) -> io::Result<()> {
-        self.conn.shutdown(Shutdown::Both)
     }
 }
 
@@ -370,7 +373,7 @@ trait TelegrafUnwrap<T> {
 
 impl<T> TelegrafUnwrap<T> for Option<T> {
     fn t_unwrap(self, msg: &str) -> Result<T, TelegrafError> {
-        self.ok_or(TelegrafError::ConnectionError(msg.to_owned()))
+        self.ok_or_else(|| TelegrafError::ConnectionError(msg.to_owned()))
     }
 }
 
@@ -382,14 +385,12 @@ mod tests {
     fn can_create_point_lp() {
         let p = Point::new(
             String::from("Foo"),
-            vec![
-                ("t1".to_owned(), "v".to_owned())
-            ],
+            vec![("t1".to_owned(), "v".to_owned())],
             vec![
                 ("f1".to_owned(), Box::new(10)),
                 ("f2".to_owned(), Box::new(10.3)),
-                ("f3".to_owned(), Box::new("b"))
-            ]
+                ("f3".to_owned(), Box::new("b")),
+            ],
         );
 
         let lp = p.to_lp();
@@ -404,7 +405,7 @@ mod tests {
             vec![
                 ("f1".to_owned(), Box::new(10)),
                 ("f2".to_owned(), Box::new(10.3)),
-            ]
+            ],
         );
         let lp = p.to_lp();
         assert_eq!(lp.to_str(), "Foo f1=10i,f2=10.3\n");
