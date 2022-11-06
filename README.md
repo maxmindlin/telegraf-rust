@@ -115,7 +115,7 @@ Any attribute that will be the value of a field must implement the `IntoFieldDat
 
 ```rust
 pub trait IntoFieldData {
-    fn into_field_data(&self) -> FieldData;
+    fn field_data(&self) -> FieldData;
 }
 ```
 
