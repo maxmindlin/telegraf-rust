@@ -8,6 +8,12 @@ by InfluxData for making metrics reporting easy for distributed services - see t
 
 This library does not provide querying or other InfluxDB client-library features. This is meant to be lightweight and simple for services to report metrics.
 
+Telegraf-rust supports all socket connection types, such as UDS(unix domain socket):
+- TCP(`tcp://`)
+- UDP(`udp://`)
+- UDS Stream(`unix://`)
+- UDS Datagram(`unixgram://`)
+
 # Install
 
 Add it to your Cargo.toml:
@@ -26,7 +32,7 @@ Using this library assumes you have a socket listener setup in your Telegraf con
   service_address = "tcp://localhost:8094"
 ```
 
-All usage will start by creating a socket connection via a `Client`. This supports multiple connection protocols - which one you use will be determined by how your Telegraf `input.socket_listener` configuration is setup. Telegraf-rust supports both `TCP` and `UDP` socket connections.
+All usage will start by creating a socket connection via a `Client`. This supports multiple connection protocols - which one you use will be determined by how your Telegraf `input.socket_listener` configuration is setup. 
 
 Once a client is setup there are multiple different ways to write points:
 
@@ -109,7 +115,7 @@ Any attribute that will be the value of a field must implement the `IntoFieldDat
 
 ```rust
 pub trait IntoFieldData {
-    fn into_field_data(&self) -> FieldData;
+    fn field_data(&self) -> FieldData;
 }
 ```
 

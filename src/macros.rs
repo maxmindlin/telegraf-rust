@@ -73,16 +73,14 @@ mod tests {
 
     #[test]
     fn can_create_with_tag() {
-        let p = point!("test", ("t", "v") ("t2", "v2"), ("f", "v"));
+        let p = point!("test", ("t", "v")("t2", "v2"), ("f", "v"));
         let exp = Point::new(
             "test".to_string(),
             vec![
                 ("t".to_string(), "v".to_string()),
                 ("t2".to_string(), "v2".to_string()),
             ],
-            vec![
-                ("f".to_string(), Box::new("v")),
-            ],
+            vec![("f".to_string(), Box::new("v"))],
         );
         assert_eq!(p, exp);
     }
@@ -93,9 +91,7 @@ mod tests {
         let exp = Point::new(
             "test".to_string(),
             Vec::new(),
-            vec![
-                ("f".to_string(), Box::new("v")),
-            ],
+            vec![("f".to_string(), Box::new("v"))],
         );
         assert_eq!(p, exp);
     }
