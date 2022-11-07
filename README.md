@@ -8,11 +8,11 @@ by InfluxData for making metrics reporting easy for distributed services - see t
 
 This library does not provide querying or other InfluxDB client-library features. This is meant to be lightweight and simple for services to report metrics.
 
-Telegraf-rust supports all socket connection types, such as UDS(unix domain socket):
-- TCP(`tcp://`)
-- UDP(`udp://`)
-- UDS Stream(`unix://`)
-- UDS Datagram(`unixgram://`)
+Telegraf-rust supports all socket connection types, such as UDS (unix domain socket):
+- TCP (`tcp://`)
+- UDP (`udp://`)
+- UDS Stream (`unix://`)
+- UDS Datagram (`unixgram://`)
 
 # Install
 
