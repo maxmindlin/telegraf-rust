@@ -24,6 +24,7 @@ pub enum FieldData {
 pub enum Attr {
     Tag(Tag),
     Field(Field),
+    Timestamp(Timestamp),
 }
 
 /// Container struct for tag attributes.
@@ -40,11 +41,28 @@ pub struct Field {
     pub value: FieldData,
 }
 
+/// Container struct for timestamp attributes.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Timestamp {
+    pub value: u64,
+}
+
 impl LineProtocol {
-    pub fn new(measurement: String, tags: Option<String>, fields: String) -> Self {
+    pub fn new(
+        measurement: String,
+        tags: Option<String>,
+        fields: String,
+        timestamp: Option<String>,
+    ) -> Self {
         match tags {
-            Some(t) => Self(format!("{},{} {}\n", measurement, t, fields)),
-            None => Self(format!("{} {}\n", measurement, fields)),
+            Some(t) => match timestamp {
+                Some(ts) => Self(format!("{},{} {} {}\n", measurement, t, fields, ts)),
+                None => Self(format!("{},{} {}\n", measurement, t, fields)),
+            },
+            None => match timestamp {
+                Some(ts) => Self(format!("{} {} {}\n", measurement, fields, ts)),
+                None => Self(format!("{} {}\n", measurement, fields)),
+            },
         }
     }
 
@@ -147,6 +165,7 @@ pub fn format_attr(attrs: Vec<Attr>) -> String {
         .map(|a| match a {
             Attr::Tag(t) => format!("{}={}", escape_spaces(&t.name), escape_spaces(&t.value)),
             Attr::Field(f) => format!("{}={}", escape_spaces(&f.name), get_field_string(&f.value)),
+            Attr::Timestamp(t) => format!("{}", t.value),
         })
         .collect();
     out.sort();

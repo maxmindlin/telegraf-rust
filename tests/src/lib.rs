@@ -40,6 +40,13 @@ struct CustomMeasurementName {
     i: i32,
 }
 
+#[derive(Metric)]
+struct Timestamp {
+    #[telegraf(timestamp)]
+    ts: u32,
+    i: f32,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -98,6 +105,13 @@ mod tests {
             t: None,
         };
         let exp = point!("Optionals", ("i", 1));
+        assert_eq!(s.to_point(), exp);
+    }
+
+    #[test]
+    fn can_derive_with_timestamp() {
+        let s = Timestamp { ts: 10, i: 1. };
+        let exp = point!("Timestamp", ("i", 1.); 10);
         assert_eq!(s.to_point(), exp);
     }
 }
