@@ -108,8 +108,10 @@ use std::{
     fmt,
     io::{self, Error, Write},
     net::{Shutdown, SocketAddr, TcpStream, UdpSocket},
-    os::unix::net::{UnixDatagram, UnixStream},
 };
+
+#[cfg(target_family = "unix")]
+use std::os::unix::net::{UnixDatagram, UnixStream};
 
 use url::Url;
 
@@ -186,7 +188,9 @@ pub struct Client {
 enum Connector {
     Tcp(TcpStream),
     Udp(UdpSocket),
+    #[cfg(target_family = "unix")]
     Unix(UnixStream),
+    #[cfg(target_family = "unix")]
     Unixgram(UnixDatagram),
 }
 
@@ -291,7 +295,9 @@ impl Connector {
         use Connector::*;
         match self {
             Tcp(c) => c.shutdown(Shutdown::Both),
+            #[cfg(target_family = "unix")]
             Unix(c) => c.shutdown(Shutdown::Both),
+            #[cfg(target_family = "unix")]
             Unixgram(c) => c.shutdown(Shutdown::Both),
             // Udp socket doesnt have a graceful close.
             Udp(_) => Ok(()),
@@ -302,7 +308,9 @@ impl Connector {
         let r = match self {
             Self::Tcp(c) => c.write(buf),
             Self::Udp(c) => c.send(buf),
+            #[cfg(target_family = "unix")]
             Self::Unix(c) => c.write(buf),
+            #[cfg(target_family = "unix")]
             Self::Unixgram(c) => c.send(buf),
         };
         r.map(|_| Ok(()))?
@@ -325,11 +333,13 @@ impl Connector {
                         conn.set_nonblocking(true)?;
                         Ok(Connector::Udp(conn))
                     }
+                    #[cfg(target_family = "unix")]
                     "unix" => {
                         let path = u.path();
                         let conn = UnixStream::connect(path)?;
                         Ok(Connector::Unix(conn))
                     }
+                    #[cfg(target_family = "unix")]
                     "unixgram" => {
                         let path = u.path();
                         let conn = UnixDatagram::unbound()?;
