@@ -109,7 +109,6 @@ use std::{
     io::{self, Error, Write},
     net::{Shutdown, SocketAddr, TcpStream, UdpSocket},
 };
-
 #[cfg(target_family = "unix")]
 use std::os::unix::net::{UnixDatagram, UnixStream};
 
