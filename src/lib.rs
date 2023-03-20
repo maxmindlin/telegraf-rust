@@ -76,8 +76,9 @@
 //!
 //! `(<measurement>, [(<tagName>, <tagVal>)], [(<fieldName>, <fieldVal>)]; <timestamp>)`
 //!
-//! Measurement name, tag set, and field set are comma separated. Tag and field tuples are space
-//! separated. Timestamp is semicolon separated. The tag set and timestamp are optional.
+//! Measurement name, tag set, and field set are comma separated. Tag and field
+//! tuples are space separated. Timestamp is semicolon separated. The tag set and
+//! timestamp are optional.
 //!
 //! ## Manual [crate::Point] initialization.
 //!
