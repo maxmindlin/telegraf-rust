@@ -66,6 +66,19 @@ struct MyMetric {
 }
 ```
 
+Timestamps are optional and can be set via the `timestamp` attribute, if not set the current time will be used:
+
+```rust
+use telegraf::*;
+
+#[derive(Metric)]
+struct MyMetric {
+    #[telegraf(timestamp)]
+    ts: u64,
+    field1: i32,
+}
+```
+
 As with any Telegraf point, tags are optional but at least one field is required.
 
 ## Use the `point` macro to do ad-hoc metrics
@@ -75,17 +88,17 @@ use telegraf::*;
 
 let mut client = Client::new("tcp://localhost:8094").unwrap();
 
-let p = point!("measurement", ("tag1", "tag1Val"), ("field1", "val") ("field2", 10));
+let p = point!("measurement", ("tag1", "tag1Val"), ("field1", "val") ("field2", 10); 100);
 client.write_point(&p);
 ```
 
 The macro syntax is the following format:
 
 ```
-(<measurement>, [(<tagName>, <tagVal>)], [(<fieldName>, <fieldVal>)])
+(<measurement>, [(<tagName>, <tagVal>)], [(<fieldName>, <fieldVal>)]; <timestamp>)
 ```
 
-Measurement name, tag set, and field set are comma separated. Tag and field tuples are space separated. The tag set is optional.
+Measurement name, tag set, and field set are comma separated. Tag and field tuples are space separated. Timestamp is semicolon separated. The tag set and timestamp are optional.
 
 ## Manual `Point` initialization
 
@@ -103,7 +116,8 @@ let p = Point::new(
         (String::from("field1"), Box::new(10)),
         (String::from("field2"), Box::new(20.5)),
         (String::from("field3"), Box::new("anything!"))
-    ]
+    ],
+    Some(100),
 );
 
 c.write_point(p)
