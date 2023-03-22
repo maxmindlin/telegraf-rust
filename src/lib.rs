@@ -427,7 +427,23 @@ mod tests {
     use super::*;
 
     #[test]
-    fn can_create_point_ts() {
+    fn can_create_point_lp_ts_no_tags() {
+        let p = Point::new(
+            String::from("Foo"),
+            vec![],
+            vec![
+                ("f1".to_owned(), Box::new(10)),
+                ("f2".to_owned(), Box::new(10.3)),
+            ],
+            Some(10),
+        );
+
+        let lp = p.to_lp();
+        assert_eq!(lp.to_str(), "Foo f1=10i,f2=10.3 10\n");
+    }
+
+    #[test]
+    fn can_create_point_lp_ts() {
         let p = Point::new(
             String::from("Foo"),
             vec![("t1".to_owned(), "v".to_owned())],
@@ -471,6 +487,7 @@ mod tests {
             ],
             None,
         );
+
         let lp = p.to_lp();
         assert_eq!(lp.to_str(), "Foo f1=10i,f2=10.3\n");
     }
