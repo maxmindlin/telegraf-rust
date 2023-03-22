@@ -55,16 +55,18 @@ impl LineProtocol {
         fields: String,
         timestamp: Option<String>,
     ) -> Self {
-        match tags {
-            Some(t) => match timestamp {
-                Some(ts) => Self(format!("{},{} {} {}\n", measurement, t, fields, ts)),
-                None => Self(format!("{},{} {}\n", measurement, t, fields)),
-            },
-            None => match timestamp {
-                Some(ts) => Self(format!("{} {} {}\n", measurement, fields, ts)),
-                None => Self(format!("{} {}\n", measurement, fields)),
-            },
+
+        let mut lp = match tags {
+            Some(t) => format!("{},{} {}", measurement, t, fields),
+            None => format!("{} {}", measurement, fields),
+        };
+
+        if let Some(ts) = timestamp {
+            lp.push_str(&format!(" {}", ts));
         }
+
+        lp.push('\n');
+        Self(lp)
     }
 
     pub fn to_str(&self) -> &str {
