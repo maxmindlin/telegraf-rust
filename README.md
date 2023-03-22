@@ -66,7 +66,9 @@ struct MyMetric {
 }
 ```
 
-Timestamps are optional and can be set via the `timestamp` attribute, if not set the current time will be used:
+As with any Telegraf point, tags are optional but at least one field is required.
+
+Timestamps are optional and can be set via the `timestamp` attribute:
 
 ```rust
 use telegraf::*;
@@ -79,7 +81,8 @@ struct MyMetric {
 }
 ```
 
-As with any Telegraf point, tags are optional but at least one field is required.
+If not present, the Telegraf daemon will set the timestamp using the current time.
+Timestamps are specified in nanosecond-precision Unix time, more information can be found [here](https://docs.influxdata.com/influxdb/v1.8/write_protocols/line_protocol_tutorial/#timestamp).
 
 ## Use the `point` macro to do ad-hoc metrics
 

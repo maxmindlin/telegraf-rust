@@ -42,6 +42,7 @@ pub struct Field {
 }
 
 /// Container struct for timestamp attributes.
+/// Timestamps are specified in nanosecond-precision Unix time, more information can be found [here](https://docs.influxdata.com/influxdb/v1.8/write_protocols/line_protocol_tutorial/#timestamp).
 #[derive(Debug, Clone, PartialEq)]
 pub struct Timestamp {
     pub value: u64,

@@ -31,6 +31,9 @@
 //! client.write(&point);
 //! ```
 //!
+//! As with any Telegraf point, tags are optional but at least one field
+//! is required.
+//!
 //! By default the measurement name will be the same as the struct. You can
 //! override this via derive attributes:
 //!
@@ -44,8 +47,7 @@
 //! }
 //! ```
 //!
-//! Timestamps are optional and can be set via the `timestamp` attribute,
-//! if not set the current time will be used:
+//! Timestamps are optional and can be set via the `timestamp` attribute:
 //!
 //! ```rust
 //! use telegraf::*;
@@ -58,8 +60,8 @@
 //! }
 //! ```
 //!
-//! As with any Telegraf point, tags are optional but at least one field
-//! is required.
+//! If not present, the Telegraf daemon will set the timestamp using the current time.
+//! Timestamps are specified in nanosecond-precision Unix time, more information can be found [here](https://docs.influxdata.com/influxdb/v1.8/write_protocols/line_protocol_tutorial/#timestamp).
 //!
 //! ## Use the [crate::point] macro to do ad-hoc metrics.
 //!
