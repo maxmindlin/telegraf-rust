@@ -55,7 +55,6 @@ impl LineProtocol {
         fields: String,
         timestamp: Option<String>,
     ) -> Self {
-
         let mut lp = match tags {
             Some(t) => format!("{},{} {}", measurement, t, fields),
             None => format!("{} {}", measurement, fields),

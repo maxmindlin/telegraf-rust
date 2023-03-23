@@ -153,7 +153,7 @@ fn get_to_point(data: &Data) -> TStream2 {
                                     } else if f.attrs.iter().any(is_timestamp) {
                                         quote!(
                                             if let Some(ref v) = self.#name {
-                                                tsp = tsp.or(Some(v.clone().into()));
+                                                tsp = tsp.or(Some(v.into()));
                                             }
                                         )
                                     } else {

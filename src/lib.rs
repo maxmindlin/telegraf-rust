@@ -60,9 +60,6 @@
 //! }
 //! ```
 //!
-//! If not present, the Telegraf daemon will set the timestamp using the current time.
-//! Timestamps are specified in nanosecond-precision Unix time, more information can be found [here](https://docs.influxdata.com/influxdb/v1.8/write_protocols/line_protocol_tutorial/#timestamp).
-//!
 //! ## Use the [crate::point] macro to do ad-hoc metrics.
 //!
 //! ```no_run
@@ -118,6 +115,36 @@
 //! ```
 //!
 //! Out of the box implementations are provided for many common data types, but manual implementation is possible for other data types.
+//!
+//! ### Timestamps
+//!
+//! Timestamps are an optional filed, if not present the Telegraf daemon will set the timestamp using the current time.
+//! Timestamps are specified in nanosecond-precision Unix time, therefore `u64` must implement the `From<T>` trait for the field type, if the implementation is not already present:
+//!
+//! ```rust
+//! use telegraf::*;
+//!
+//! #[derive(Copy, Clone)]
+//! struct MyType {
+//!     // ...
+//! }
+//!
+//! impl From<MyType> for u64 {
+//!     fn from(my_type: MyType) -> Self {
+//!         todo!()
+//!     }
+//! }
+//!
+//! #[derive(Metric)]
+//! struct MyMetric {
+//!     #[telegraf(timestamp)]
+//!     ts: MyType,
+//!     field1: i32,
+//! }
+//!
+//! ```
+//!
+//! More information about timestamps can be found [here](https://docs.influxdata.com/influxdb/v1.8/write_protocols/line_protocol_tutorial/#timestamp).
 
 pub mod macros;
 pub mod protocol;
