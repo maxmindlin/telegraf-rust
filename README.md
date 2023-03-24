@@ -1,6 +1,7 @@
 # Telegraf-rust
 
 [![Telegraf crate](https://img.shields.io/crates/v/telegraf.svg)](https://crates.io/crates/telegraf)
+[![Telegraf crate downloads](https://img.shields.io/crates/d/telegraf)](https://crates.io/crates/telegraf)
 [![Telegraf documentation](https://docs.rs/telegraf/badge.svg)](https://docs.rs/telegraf)
 
 Telegraf-rust is a lightweight client library for general metrics writing using Telegraf. Telegraf is a micro-service provided
