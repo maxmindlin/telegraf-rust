@@ -137,7 +137,7 @@ Out of the box implementations are provided for many common data types, but manu
 
 ### Timestamps
 
-Timestamps are an optional filed, if not present the Telegraf daemon will set the timestamp using the current time.
+Timestamps are optional. If not present, the Telegraf daemon will set the timestamp using the current time.
 Timestamps are specified in nanosecond-precision Unix time, therefore `u64` must implement the `From<T>` trait for the field type, if the implementation is not already present:
 
 ```rust
