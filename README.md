@@ -69,6 +69,19 @@ struct MyMetric {
 
 As with any Telegraf point, tags are optional but at least one field is required.
 
+Timestamps are optional and can be set via the `timestamp` attribute:
+
+```rust
+use telegraf::*;
+
+#[derive(Metric)]
+struct MyMetric {
+    #[telegraf(timestamp)]
+    ts: u64,
+    field1: i32,
+}
+```
+
 ## Use the `point` macro to do ad-hoc metrics
 
 ```rust
@@ -76,17 +89,17 @@ use telegraf::*;
 
 let mut client = Client::new("tcp://localhost:8094").unwrap();
 
-let p = point!("measurement", ("tag1", "tag1Val"), ("field1", "val") ("field2", 10));
+let p = point!("measurement", ("tag1", "tag1Val"), ("field1", "val") ("field2", 10); 100);
 client.write_point(&p);
 ```
 
 The macro syntax is the following format:
 
 ```
-(<measurement>, [(<tagName>, <tagVal>)], [(<fieldName>, <fieldVal>)])
+(<measurement>, [(<tagName>, <tagVal>)], [(<fieldName>, <fieldVal>)]; <timestamp>)
 ```
 
-Measurement name, tag set, and field set are comma separated. Tag and field tuples are space separated. The tag set is optional.
+Measurement name, tag set, and field set are comma separated. Tag and field tuples are space separated. Timestamp is semicolon separated. The tag set and timestamp are optional.
 
 ## Manual `Point` initialization
 
@@ -104,7 +117,8 @@ let p = Point::new(
         (String::from("field1"), Box::new(10)),
         (String::from("field2"), Box::new(20.5)),
         (String::from("field3"), Box::new("anything!"))
-    ]
+    ],
+    Some(100),
 );
 
 c.write_point(p)
@@ -121,3 +135,33 @@ pub trait IntoFieldData {
 ```
 
 Out of the box implementations are provided for many common data types, but manual implementation is possible for other data types.
+
+### Timestamps
+
+Timestamps are optional. If not present, the Telegraf daemon will set the timestamp using the current time.
+Timestamps are specified in nanosecond-precision Unix time, therefore `u64` must implement the `From<T>` trait for the field type, if the implementation is not already present:
+
+```rust
+use telegraf::*;
+
+#[derive(Copy, Clone)]
+struct MyType {
+    // ...
+}
+
+impl From<MyType> for u64 {
+    fn from(my_type: MyType) -> Self {
+        todo!()
+    }
+}
+
+#[derive(Metric)]
+struct MyMetric {
+    #[telegraf(timestamp)]
+    ts: MyType,
+    field1: i32,
+}
+
+```
+
+More information about timestamps can be found [here](https://docs.influxdata.com/influxdb/v1.8/write_protocols/line_protocol_tutorial/#timestamp).

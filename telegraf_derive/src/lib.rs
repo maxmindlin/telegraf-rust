@@ -31,8 +31,9 @@ fn expand_metric(tokens: TokenStream) -> TokenStream {
             fn to_point(&self) -> #krate::Point {
                 let mut pf: Vec<(String, Box<dyn #krate::IntoFieldData>)> = Vec::new();
                 let mut pt: Vec<(String, String)> = Vec::new();
+                let mut tsp: Option<u64> = None;
                 #pt
-                #krate::Point::new(#measurement, pt, pf)
+                #krate::Point::new(#measurement, pt, pf, tsp)
             }
         }
     };
@@ -113,6 +114,19 @@ fn is_tag(attr: &Attribute) -> bool {
         .unwrap()
 }
 
+fn is_timestamp(attr: &Attribute) -> bool {
+    if !has_attr(attr) {
+        return false;
+    }
+
+    attr.tokens
+        .clone()
+        .into_iter()
+        .next()
+        .map(|t_tree| check_attr(t_tree, "timestamp"))
+        .unwrap()
+}
+
 fn get_to_point(data: &Data) -> TStream2 {
     fn path_is_option(path: &Path) -> bool {
         path.leading_colon.is_none()
@@ -136,6 +150,12 @@ fn get_to_point(data: &Data) -> TStream2 {
                                                 pt.push((stringify!(#name).to_string(), format!("{}", v)));
                                             }
                                         )
+                                    } else if f.attrs.iter().any(is_timestamp) {
+                                        quote!(
+                                            if let Some(ref v) = self.#name {
+                                                tsp = tsp.or(Some(v.into()));
+                                            }
+                                        )
                                     } else {
                                         quote!(
                                             if let Some(ref v) = self.#name {
@@ -148,6 +168,8 @@ fn get_to_point(data: &Data) -> TStream2 {
                                     let name = &f.ident;
                                     if f.attrs.iter().any(is_tag) {
                                         quote!(pt.push((stringify!(#name).to_string(), format!("{}", self.#name)));)
+                                    } else if f.attrs.iter().any(is_timestamp) {
+                                        quote!(tsp = tsp.or(Some(self.#name.into()));)
                                     } else {
                                         quote!(pf.push((stringify!(#name).to_string(), Box::new(self.#name.clone())));)
                                     }

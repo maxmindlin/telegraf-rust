@@ -31,6 +31,9 @@
 //! client.write(&point);
 //! ```
 //!
+//! As with any Telegraf point, tags are optional but at least one field
+//! is required.
+//!
 //! By default the measurement name will be the same as the struct. You can
 //! override this via derive attributes:
 //!
@@ -44,8 +47,18 @@
 //! }
 //! ```
 //!
-//! As with any Telegraf point, tags are optional but at least one field
-//! is required.
+//! Timestamps are optional and can be set via the `timestamp` attribute:
+//!
+//! ```rust
+//! use telegraf::*;
+//!
+//! #[derive(Metric)]
+//! struct MyMetric {
+//!     #[telegraf(timestamp)]
+//!     ts: u64,
+//!     field1: i32,
+//! }
+//! ```
 //!
 //! ## Use the [crate::point] macro to do ad-hoc metrics.
 //!
@@ -60,10 +73,11 @@
 //!
 //! The macro syntax is the following format:
 //!
-//! `(<measurement>, [(<tagName>, <tagVal>)], [(<fieldName>, <fieldVal>)])`
+//! `(<measurement>, [(<tagName>, <tagVal>)], [(<fieldName>, <fieldVal>)]; <timestamp>)`
 //!
-//! Measurement name, tag set, and field set are space separated. Tag and field sets are space
-//! separated. The tag set is optional.
+//! Measurement name, tag set, and field set are comma separated. Tag and field
+//! tuples are space separated. Timestamp is semicolon separated. The tag set and
+//! timestamp are optional.
 //!
 //! ## Manual [crate::Point] initialization.
 //!
@@ -81,7 +95,8 @@
 //!         (String::from("field1"), Box::new(10)),
 //!         (String::from("field2"), Box::new(20.5)),
 //!         (String::from("field3"), Box::new("anything!"))
-//!     ]
+//!     ],
+//!     Some(100),
 //! );
 //!
 //! c.write_point(&p);
@@ -100,6 +115,36 @@
 //! ```
 //!
 //! Out of the box implementations are provided for many common data types, but manual implementation is possible for other data types.
+//!
+//! ### Timestamps
+//!
+//! Timestamps are an optional filed, if not present the Telegraf daemon will set the timestamp using the current time.
+//! Timestamps are specified in nanosecond-precision Unix time, therefore `u64` must implement the `From<T>` trait for the field type, if the implementation is not already present:
+//!
+//! ```rust
+//! use telegraf::*;
+//!
+//! #[derive(Copy, Clone)]
+//! struct MyType {
+//!     // ...
+//! }
+//!
+//! impl From<MyType> for u64 {
+//!     fn from(my_type: MyType) -> Self {
+//!         todo!()
+//!     }
+//! }
+//!
+//! #[derive(Metric)]
+//! struct MyMetric {
+//!     #[telegraf(timestamp)]
+//!     ts: MyType,
+//!     field1: i32,
+//! }
+//!
+//! ```
+//!
+//! More information about timestamps can be found [here](https://docs.influxdata.com/influxdb/v1.8/write_protocols/line_protocol_tutorial/#timestamp).
 
 pub mod macros;
 pub mod protocol;
@@ -144,6 +189,8 @@ pub type TelegrafResult = Result<(), TelegrafError>;
 ///     #[telegraf(tag)]
 ///     tag1: String,
 ///     field2: f32,
+///     #[telegraf(timestamp)]
+///     ts: u64,
 /// }
 /// ```
 pub trait Metric {
@@ -176,6 +223,7 @@ pub struct Point {
     pub measurement: String,
     pub tags: Vec<Tag>,
     pub fields: Vec<Field>,
+    pub timestamp: Option<Timestamp>,
 }
 
 /// Connection client used to handle socket connection management
@@ -200,6 +248,7 @@ impl Point {
         measurement: String,
         tags: Vec<(String, String)>,
         fields: Vec<(String, Box<dyn IntoFieldData>)>,
+        timestamp: Option<u64>,
     ) -> Self {
         let t = tags
             .into_iter()
@@ -212,23 +261,36 @@ impl Point {
                 value: v.field_data(),
             })
             .collect();
+        let ts = timestamp.map(|t| Timestamp { value: t });
         Self {
             measurement,
             tags: t,
             fields: f,
+            timestamp: ts,
         }
     }
 
     fn to_lp(&self) -> LineProtocol {
         let tag_attrs: Vec<Attr> = self.tags.iter().cloned().map(Attr::Tag).collect();
         let field_attrs: Vec<Attr> = self.fields.iter().cloned().map(Attr::Field).collect();
+        let timestamp_attr: Vec<Attr> = self
+            .timestamp
+            .iter()
+            .cloned()
+            .map(Attr::Timestamp)
+            .collect();
         let tag_str = if tag_attrs.is_empty() {
             None
         } else {
             Some(format_attr(tag_attrs))
         };
         let field_str = format_attr(field_attrs);
-        LineProtocol::new(self.measurement.clone(), tag_str, field_str)
+        let timestamp_str = if timestamp_attr.is_empty() {
+            None
+        } else {
+            Some(format_attr(timestamp_attr))
+        };
+        LineProtocol::new(self.measurement.clone(), tag_str, field_str, timestamp_str)
     }
 }
 
@@ -392,6 +454,39 @@ mod tests {
     use super::*;
 
     #[test]
+    fn can_create_point_lp_ts_no_tags() {
+        let p = Point::new(
+            String::from("Foo"),
+            vec![],
+            vec![
+                ("f1".to_owned(), Box::new(10)),
+                ("f2".to_owned(), Box::new(10.3)),
+            ],
+            Some(10),
+        );
+
+        let lp = p.to_lp();
+        assert_eq!(lp.to_str(), "Foo f1=10i,f2=10.3 10\n");
+    }
+
+    #[test]
+    fn can_create_point_lp_ts() {
+        let p = Point::new(
+            String::from("Foo"),
+            vec![("t1".to_owned(), "v".to_owned())],
+            vec![
+                ("f1".to_owned(), Box::new(10)),
+                ("f2".to_owned(), Box::new(10.3)),
+                ("f3".to_owned(), Box::new("b")),
+            ],
+            Some(10),
+        );
+
+        let lp = p.to_lp();
+        assert_eq!(lp.to_str(), "Foo,t1=v f1=10i,f2=10.3,f3=\"b\" 10\n");
+    }
+
+    #[test]
     fn can_create_point_lp() {
         let p = Point::new(
             String::from("Foo"),
@@ -401,6 +496,7 @@ mod tests {
                 ("f2".to_owned(), Box::new(10.3)),
                 ("f3".to_owned(), Box::new("b")),
             ],
+            None,
         );
 
         let lp = p.to_lp();
@@ -416,7 +512,9 @@ mod tests {
                 ("f1".to_owned(), Box::new(10)),
                 ("f2".to_owned(), Box::new(10.3)),
             ],
+            None,
         );
+
         let lp = p.to_lp();
         assert_eq!(lp.to_str(), "Foo f1=10i,f2=10.3\n");
     }

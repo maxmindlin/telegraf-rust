@@ -24,6 +24,7 @@ pub enum FieldData {
 pub enum Attr {
     Tag(Tag),
     Field(Field),
+    Timestamp(Timestamp),
 }
 
 /// Container struct for tag attributes.
@@ -40,12 +41,31 @@ pub struct Field {
     pub value: FieldData,
 }
 
+/// Container struct for timestamp attributes.
+/// Timestamps are specified in nanosecond-precision Unix time, more information can be found [here](https://docs.influxdata.com/influxdb/v1.8/write_protocols/line_protocol_tutorial/#timestamp).
+#[derive(Debug, Clone, PartialEq)]
+pub struct Timestamp {
+    pub value: u64,
+}
+
 impl LineProtocol {
-    pub fn new(measurement: String, tags: Option<String>, fields: String) -> Self {
-        match tags {
-            Some(t) => Self(format!("{},{} {}\n", measurement, t, fields)),
-            None => Self(format!("{} {}\n", measurement, fields)),
+    pub fn new(
+        measurement: String,
+        tags: Option<String>,
+        fields: String,
+        timestamp: Option<String>,
+    ) -> Self {
+        let mut lp = match tags {
+            Some(t) => format!("{},{} {}", measurement, t, fields),
+            None => format!("{} {}", measurement, fields),
+        };
+
+        if let Some(ts) = timestamp {
+            lp.push_str(&format!(" {}", ts));
         }
+
+        lp.push('\n');
+        Self(lp)
     }
 
     pub fn to_str(&self) -> &str {
@@ -147,6 +167,7 @@ pub fn format_attr(attrs: Vec<Attr>) -> String {
         .map(|a| match a {
             Attr::Tag(t) => format!("{}={}", escape_spaces(&t.name), escape_spaces(&t.value)),
             Attr::Field(f) => format!("{}={}", escape_spaces(&f.name), get_field_string(&f.value)),
+            Attr::Timestamp(t) => format!("{}", t.value),
         })
         .collect();
     out.sort();
