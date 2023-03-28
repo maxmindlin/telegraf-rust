@@ -1,6 +1,6 @@
 [package]
 name = "telegraf"
-version = "0.5.1"
+version = "0.6.0"
 authors = ["Max Mindlin <maxmindlin@gmail.com>"]
 edition = "2018"
 repository = "https://github.com/maxmindlin/telegraf-rust"
@@ -15,4 +15,4 @@ members = ["telegraf_derive", "tests"]
 
 [dependencies]
 url = "2.1.1"
-telegraf_derive = { path = "telegraf_derive", version = "0.1.1" }
+telegraf_derive = "0.2.0"
