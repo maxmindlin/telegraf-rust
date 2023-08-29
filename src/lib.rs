@@ -449,6 +449,12 @@ impl<T> TelegrafUnwrap<T> for Option<T> {
     }
 }
 
+impl fmt::Display for Point {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.to_lp().to_str())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
