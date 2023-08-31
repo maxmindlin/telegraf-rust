@@ -149,24 +149,11 @@
 pub mod macros;
 pub mod protocol;
 
-use std::{
-    fmt,
-    io::{self, Error, Write},
-    net::{Shutdown, SocketAddr, TcpStream, UdpSocket},
-};
-
-#[cfg(target_family = "unix")]
-use std::os::unix::net::{UnixDatagram, UnixStream};
-
-use url::Url;
+use std::fmt;
 
 use protocol::*;
 pub use protocol::{FieldData, IntoFieldData};
 pub use telegraf_derive::*;
-
-/// Common result type. Only meaningful response is
-/// an error.
-pub type TelegrafResult = Result<(), TelegrafError>;
 
 /// Trait for writing custom types as a telegraf
 /// [crate::Point].
@@ -199,17 +186,6 @@ pub trait Metric {
     fn to_point(&self) -> Point;
 }
 
-/// Error enum for library failures.
-#[derive(Debug)]
-pub enum TelegrafError {
-    /// Error reading or writing I/O.
-    IoError(Error),
-    /// Error with internal socket connection.
-    ConnectionError(String),
-    /// Error when a bad protocol is created.
-    BadProtocol(String),
-}
-
 /// A single influx metric. Handles conversion from Rust types
 /// to influx lineprotocol syntax.
 ///
@@ -224,22 +200,6 @@ pub struct Point {
     pub tags: Vec<Tag>,
     pub fields: Vec<Field>,
     pub timestamp: Option<Timestamp>,
-}
-
-/// Connection client used to handle socket connection management
-/// and writing.
-pub struct Client {
-    conn: Connector,
-}
-
-/// Different types of connections that the library supports.
-enum Connector {
-    Tcp(TcpStream),
-    Udp(UdpSocket),
-    #[cfg(target_family = "unix")]
-    Unix(UnixStream),
-    #[cfg(target_family = "unix")]
-    Unixgram(UnixDatagram),
 }
 
 impl Point {
@@ -291,161 +251,6 @@ impl Point {
             Some(format_attr(timestamp_attr))
         };
         LineProtocol::new(self.measurement.clone(), tag_str, field_str, timestamp_str)
-    }
-}
-
-impl Client {
-    /// Creates a new Client. Determines socket protocol from
-    /// provided URL.
-    pub fn new(conn_url: &str) -> Result<Self, TelegrafError> {
-        let conn = Connector::new(conn_url)?;
-        Ok(Self { conn })
-    }
-
-    /// Writes the protocol representation of a point
-    /// to the established connection.
-    pub fn write_point(&mut self, pt: &Point) -> TelegrafResult {
-        if pt.fields.is_empty() {
-            return Err(TelegrafError::BadProtocol(
-                "points must have at least 1 field".to_owned(),
-            ));
-        }
-
-        let lp = pt.to_lp();
-        let bytes = lp.to_str().as_bytes();
-        self.write_to_conn(bytes)
-    }
-
-    /// Joins multiple points together and writes them in a batch. Useful
-    /// if you want to write lots of points but not overwhelm local service or
-    /// you want to ensure all points have the exact same timestamp.
-    pub fn write_points(&mut self, pts: &[Point]) -> TelegrafResult {
-        if pts.iter().any(|p| p.fields.is_empty()) {
-            return Err(TelegrafError::BadProtocol(
-                "points must have at least 1 field".to_owned(),
-            ));
-        }
-
-        let lp = pts
-            .iter()
-            .map(|p| p.to_lp().to_str().to_owned())
-            .collect::<Vec<String>>()
-            .join("");
-        self.write_to_conn(lp.as_bytes())
-    }
-
-    /// Convenience wrapper around writing points for types
-    /// that implement [crate::Metric].
-    pub fn write<M: Metric>(&mut self, metric: &M) -> TelegrafResult {
-        let pt = metric.to_point();
-        self.write_point(&pt)
-    }
-
-    /// Closes and cleans up socket connection.
-    pub fn close(&self) -> io::Result<()> {
-        self.conn.close()
-    }
-
-    /// Writes byte array to internal outgoing socket.
-    pub fn write_to_conn(&mut self, data: &[u8]) -> TelegrafResult {
-        self.conn.write(data).map(|_| Ok(()))?
-    }
-}
-
-impl Connector {
-    fn close(&self) -> io::Result<()> {
-        use Connector::*;
-        match self {
-            Tcp(c) => c.shutdown(Shutdown::Both),
-            #[cfg(target_family = "unix")]
-            Unix(c) => c.shutdown(Shutdown::Both),
-            #[cfg(target_family = "unix")]
-            Unixgram(c) => c.shutdown(Shutdown::Both),
-            // Udp socket doesnt have a graceful close.
-            Udp(_) => Ok(()),
-        }
-    }
-
-    fn write(&mut self, buf: &[u8]) -> io::Result<()> {
-        let r = match self {
-            Self::Tcp(c) => c.write(buf),
-            Self::Udp(c) => c.send(buf),
-            #[cfg(target_family = "unix")]
-            Self::Unix(c) => c.write(buf),
-            #[cfg(target_family = "unix")]
-            Self::Unixgram(c) => c.send(buf),
-        };
-        r.map(|_| Ok(()))?
-    }
-
-    fn new(url: &str) -> Result<Self, TelegrafError> {
-        match Url::parse(url) {
-            Ok(u) => {
-                let scheme = u.scheme();
-                match scheme {
-                    "tcp" => {
-                        let addr = u.socket_addrs(|| None)?;
-                        let conn = TcpStream::connect(&*addr)?;
-                        Ok(Connector::Tcp(conn))
-                    }
-                    "udp" => {
-                        let addr = u.socket_addrs(|| None)?;
-                        let conn = UdpSocket::bind(&[SocketAddr::from(([0, 0, 0, 0], 0))][..])?;
-                        conn.connect(&*addr)?;
-                        conn.set_nonblocking(true)?;
-                        Ok(Connector::Udp(conn))
-                    }
-                    #[cfg(target_family = "unix")]
-                    "unix" => {
-                        let path = u.path();
-                        let conn = UnixStream::connect(path)?;
-                        Ok(Connector::Unix(conn))
-                    }
-                    #[cfg(target_family = "unix")]
-                    "unixgram" => {
-                        let path = u.path();
-                        let conn = UnixDatagram::unbound()?;
-                        conn.connect(path)?;
-                        conn.set_nonblocking(true)?;
-                        Ok(Connector::Unixgram(conn))
-                    }
-                    _ => Err(TelegrafError::BadProtocol(format!(
-                        "unknown connection protocol {}",
-                        scheme
-                    ))),
-                }
-            }
-            Err(_) => Err(TelegrafError::BadProtocol(format!(
-                "invalid connection URL {}",
-                url
-            ))),
-        }
-    }
-}
-
-impl fmt::Display for TelegrafError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            TelegrafError::IoError(ref e) => write!(f, "{}", e),
-            TelegrafError::ConnectionError(ref e) => write!(f, "{}", e),
-            TelegrafError::BadProtocol(ref e) => write!(f, "{}", e),
-        }
-    }
-}
-
-impl From<Error> for TelegrafError {
-    fn from(e: Error) -> Self {
-        Self::ConnectionError(e.to_string())
-    }
-}
-
-trait TelegrafUnwrap<T> {
-    fn t_unwrap(self, msg: &str) -> Result<T, TelegrafError>;
-}
-
-impl<T> TelegrafUnwrap<T> for Option<T> {
-    fn t_unwrap(self, msg: &str) -> Result<T, TelegrafError> {
-        self.ok_or_else(|| TelegrafError::ConnectionError(msg.to_owned()))
     }
 }
 
