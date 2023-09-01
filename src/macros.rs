@@ -43,10 +43,9 @@
 macro_rules! point {
     ($measure:expr, $(($fname:expr, $fval:expr)) + $(; $ts:expr)?) => {
         {
-            let mut fields: Vec<(String, Box<dyn $crate::IntoFieldData>)> = Vec::new();
-            $(
-                fields.push((String::from($fname), Box::new($fval)));
-            )*
+            let fields: Vec<(String, Box<dyn $crate::IntoFieldData>)> = vec![
+                $((String::from($fname), Box::new($fval))),*
+            ];
 
             #[allow(unused_mut)]
             let mut timestamp: Option<u64> = None;

@@ -175,7 +175,7 @@ pub fn format_attr(attrs: Vec<Attr>) -> String {
 }
 
 fn escape_spaces(s: &str) -> String {
-    s.replace(' ', r#"\ "#)
+    s.replace(' ', r"\ ")
 }
 
 #[cfg(test)]
